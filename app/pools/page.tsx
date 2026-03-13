@@ -167,33 +167,14 @@ export default function PoolsPage() {
             {/* Background Layer */}
             <div className="terminal-grid" />
 
-            <header className="flex items-center justify-between border-b border-white/5 px-6 py-4 md:px-12 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-                <div className="flex items-center gap-8">
-                    <div className="flex items-center gap-2">
-                        <div className="size-6 text-primary">
-                            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M24 4C25.7818 14.2173 33.7827 22.2182 44 24C33.7827 25.7818 25.7818 33.7827 24 44C22.2182 33.7827 14.2173 25.7818 4 24C14.2173 22.2182 22.2182 14.2173 24 4Z" fill="currentColor"></path>
-                            </svg>
-                        </div>
-                        <h2 className="sr-only">Obolus</h2>
-                        <img src="/logo.png" alt="Obolus Logo" className="h-6 w-auto object-contain" />
-                    </div>
-                    <nav className="hidden lg:flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest font-mono">
-                        <Link className="text-primary border-b border-primary/40 pb-1" href="/terminal">TERMINAL</Link>
-                        <Link className="text-white/40 hover:text-white transition-colors" href="/pools">POOLS</Link>
-                        <Link className="text-white/40 hover:text-white transition-colors" href="#">NETWORK</Link>
-                        <Link className="text-white/40 hover:text-white transition-colors" href="#">SECURITY</Link>
-                    </nav>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="hidden sm:flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-sm">
-                        <Activity className="w-3 h-3 text-primary animate-pulse" />
-                        <span className="text-[9px] font-mono text-white/60 uppercase tracking-widest leading-none">
-                            {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "NOT_CONNECTED"}
-                        </span>
-                    </div>
-                </div>
-            </header>
+            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4 md:px-12 bg-background/40 backdrop-blur-md sticky top-0 z-30">
+                <nav className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest font-mono">
+                    <Link className="text-white/40 hover:text-white transition-colors" href="/terminal">TERMINAL</Link>
+                    <Link className="text-primary border-b border-primary/40 pb-1" href="/pools">POOLS</Link>
+                    <Link className="text-white/40 hover:text-white transition-colors" href="#">NETWORK</Link>
+                    <Link className="text-white/40 hover:text-white transition-colors" href="#">SECURITY</Link>
+                </nav>
+            </div>
 
             <main className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 gap-6 max-w-full mx-auto w-full relative z-10 font-mono">
                 {/* Stats Grid */}

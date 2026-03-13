@@ -2,14 +2,12 @@
 
 import type React from "react"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
-import { usePrivy } from "@privy-io/react-auth"
+import { useAccount } from "wagmi"
 
 export function ConnectGate({ children }: { children: React.ReactNode }) {
-  const { authenticated, ready } = usePrivy()
+  const { isConnected } = useAccount()
 
-  if (!ready) return null // Or a loading spinner
-
-  if (!authenticated) {
+  if (!isConnected) {
     return (
       <div className="min-h-[70dvh] flex flex-col items-center justify-center text-center">
         <div className="rounded-3xl bg-card/40 border border-border/40 backdrop-blur-xl p-6 w-full max-w-sm">

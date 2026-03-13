@@ -15,7 +15,7 @@ import {
   LogOut,
   User
 } from "lucide-react"
-import { usePrivy } from "@privy-io/react-auth"
+import { useAccount, useDisconnect } from "wagmi"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
@@ -29,7 +29,8 @@ const NAV_ITEMS = [
 
 export function SidebarDrawer({ open, onOpenChange }: { open?: boolean; onOpenChange?: (v: boolean) => void }) {
   const pathname = usePathname()
-  const { user, authenticated, logout } = usePrivy()
+  const { address, isConnected } = useAccount()
+  const { disconnect } = useDisconnect()
 
   const shortAddress = (a: string) => a.length > 10 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a
 
@@ -50,6 +51,7 @@ export function SidebarDrawer({ open, onOpenChange }: { open?: boolean; onOpenCh
               width={100} 
               height={32} 
               className="h-8 w-auto object-contain" 
+              priority
             />
           </div>
         </SheetHeader>
@@ -85,19 +87,19 @@ export function SidebarDrawer({ open, onOpenChange }: { open?: boolean; onOpenCh
             <span className="text-[9px] font-bold text-primary/60">24ms</span>
           </div>
 
-          {authenticated && user?.wallet && (
+          {isConnected && address && (
             <div className="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center justify-between group">
               <div className="flex items-center gap-3">
                 <div className="size-8 rounded bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <User className="size-4 text-primary" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-white tracking-tight">{shortAddress(user.wallet.address)}</span>
+                  <span className="text-[10px] font-bold text-white tracking-tight">{shortAddress(address)}</span>
                   <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">VERIFIED USER</span>
                 </div>
               </div>
               <button
-                onClick={() => logout()}
+                onClick={() => disconnect()}
                 className="text-white/20 hover:text-red-400 transition-colors"
               >
                 <LogOut className="size-4" />

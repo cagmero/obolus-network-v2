@@ -6,6 +6,32 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export async function GET() {
     try {
+        if (!supabaseUrl || !supabaseAnonKey) {
+            console.warn("Supabase env vars missing, returning mock data");
+            return NextResponse.json([
+                {
+                    id: 1,
+                    chain_name: 'Monad Testnet',
+                    asset_symbol: 'MON',
+                    tvl: '1240200',
+                    apy: '12.4',
+                    pool_type: 'MASTER',
+                    contract_address: '0x1234...5678',
+                    is_live: true
+                },
+                {
+                    id: 2,
+                    chain_name: 'Avalanche Fuji',
+                    asset_symbol: 'AVAX',
+                    tvl: '850000',
+                    apy: '8.2',
+                    pool_type: 'SATELLITE',
+                    contract_address: '0xabcd...efgh',
+                    is_live: true
+                }
+            ]);
+        }
+
         const supabase = createClient(supabaseUrl, supabaseAnonKey)
         const { data: pools, error } = await supabase
             .from('pools')
@@ -14,10 +40,6 @@ export async function GET() {
 
         if (error) throw error
 
-        // Map database fields to the expected UI format if necessary
-        // In this case, we'll just return the database records directly.
-        // We add an 'is_live' flag based on the existence of a contract address 
-        // to maintain UI compatibility.
         const result = (pools || []).map(pool => ({
             ...pool,
             is_live: !!pool.contract_address && !pool.contract_address.startsWith('0x0000')
@@ -25,6 +47,7 @@ export async function GET() {
 
         return NextResponse.json(result)
     } catch (error: any) {
+        console.error("Pools API error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }

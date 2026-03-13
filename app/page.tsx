@@ -6,15 +6,13 @@ import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { Zap, History, ArrowUpRight, ChevronRight, CreditCard } from "lucide-react"
 import { useAccount, useReadContract } from "wagmi"
-import { usePrivy } from "@privy-io/react-auth"
 import { LandingPage } from "@/components/landing-page"
 import { creditManagerAbi, debtManagerAbi } from "@/generated"
 import { CONTRACT_ADDRESSES, MASTER_CHAIN_ID } from "@/lib/constants"
 import { formatUnits } from "viem"
 
 export default function Page() {
-  const { address } = useAccount()
-  const { authenticated: isConnected } = usePrivy()
+  const { address, isConnected } = useAccount()
 
   const { data: txData } = useSWR("/api/transactions", (url) => fetch(url).then(r => r.json()))
 

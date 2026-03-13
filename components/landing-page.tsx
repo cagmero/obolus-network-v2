@@ -1,10 +1,10 @@
 "use client"
 
-import { usePrivy } from "@privy-io/react-auth"
+import { useConnectModal } from "@rainbow-me/rainbowkit"
 import Link from "next/link"
 
 export function LandingPage() {
-    const { login } = usePrivy()
+    const { openConnectModal } = useConnectModal()
 
     return (
         <div className="relative min-h-screen flex flex-col overflow-x-hidden -mt-24">
@@ -73,8 +73,8 @@ export function LandingPage() {
                     <div className="flex flex-col md:flex-row items-center gap-6">
                         <button
                             onClick={() => {
-                                console.log("LandingPage: LAUNCH TERMINAL clicked, calling login()")
-                                login()
+                                console.log("LandingPage: LAUNCH TERMINAL clicked, calling openConnectModal()")
+                                openConnectModal?.()
                             }}
                             className="bg-primary text-black px-12 py-5 rounded-xl font-bold text-xl hover:brightness-110 transition-all neon-glow min-w-[280px] font-mono uppercase tracking-tighter"
                         >
@@ -128,7 +128,7 @@ export function LandingPage() {
                         <div className="flex gap-8 items-center">
                             <span className="text-primary font-mono text-base font-bold tracking-[0.3em] uppercase">Obolus NETWORK STATUS:</span>
                             <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">USDC_VOLUME: $4.2M</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">STAKED_SOL: 85,120.33</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">STAKED_MON: 85,120.33</span>
                             <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">TOTAL_CREDIT_ISSUED: $2,450,192.00</span>
                             <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">ACTIVE_STAKERS: 12,402</span>
                             <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">CORE_SYNC_HEALTH: 100%</span>

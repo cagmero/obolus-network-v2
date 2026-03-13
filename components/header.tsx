@@ -5,11 +5,10 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { usePrivy } from "@privy-io/react-auth"
+import { useAccount } from "wagmi"
 import { SidebarDrawer } from "./sidebar-drawer"
 import { cn } from "@/lib/utils"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
-import { LogOut } from "lucide-react"
 
 const NAV = [
   { href: "/pools", label: "Pools" },
@@ -22,19 +21,13 @@ const NAV = [
 
 export function AppHeader() {
   const pathname = usePathname()
-  const { authenticated, user, logout } = usePrivy()
+  const { isConnected } = useAccount()
   const [open, setOpen] = useState(false)
-
-  const activeAccount = user?.wallet
-
-  useEffect(() => {
-    // Moved auto-open logic or disabled it to prevent blocking UI
-  }, [])
 
   return (
     <header className="sticky top-0 z-40 w-full pt-3 pb-2 ">
       <div
-        className="grid grid-cols-[auto_1fr_auto] items-center rounded-none sm:rounded-2xl bg-primary/10 border-x-0 sm:border-x border-y border-primary/20 backdrop-blur-xl px-4 py-3 min-h-[60px]"
+        className="grid grid-cols-[auto_1fr_auto] items-center rounded-none sm:rounded-2xl bg-primary/10 border-x-0 sm:border-x border-y border-primary/20 backdrop-blur-xl px-4 py-3 min-h-[60px] relative z-50"
         role="navigation"
         aria-label="Main"
       >
@@ -72,25 +65,8 @@ export function AppHeader() {
         </nav>
 
         {/* Right: wallet actions */}
-        <div className="flex items-center justify-end gap-3 min-w-0">
-          {authenticated && activeAccount ? (
-            <>
-              <span className="hidden sm:inline text-xs bg-primary/15 px-3 py-1.5 rounded-full font-mono whitespace-nowrap">
-                {shortAddress(activeAccount.address)}
-              </span>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="rounded-full whitespace-nowrap"
-                onClick={() => logout()}
-              >
-                <LogOut className="h-4 w-4 mr-1" />
-                Disconnect
-              </Button>
-            </>
-          ) : (
-            <ConnectWalletButton />
-          )}
+        <div className="flex items-center justify-end gap-3 min-w-[140px]">
+          <ConnectWalletButton />
         </div>
       </div>
     </header>
