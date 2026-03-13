@@ -34,7 +34,7 @@ export default function LimitsPage() {
             Your Journey to Higher Limits
           </h1>
           <p className="text-foreground/60 text-lg max-w-2xl mx-auto">
-            Empower your portfolio on Obolus. Every step you take unlocks more borrowing power and exclusive financial flexibility.
+            Empower your portfolio on . Every step you take unlocks more borrowing power and exclusive financial flexibility.
           </p>
         </div>
 
@@ -256,4 +256,5 @@ export default function LimitsPage() {
     </ConnectGate>
   )
 }
+
 

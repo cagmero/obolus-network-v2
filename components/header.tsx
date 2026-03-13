@@ -46,9 +46,15 @@ export function AppHeader() {
         {/* Left: menu icon + logo */}
         <div className="flex items-center gap-2">
           <SidebarDrawer open={open} onOpenChange={setOpen} />
-          <Link href="/" className="flex items-center gap-2 font-bold tracking-tighter text-2xl font-display text-primary">
-            <Image src="/logo.png" alt="Obolus Logo" width={32} height={32} className="rounded-md" />
-            Obolus
+          <Link href="/" className="flex items-center gap-2">
+            <Image 
+              src="/logo.png" 
+              alt="Obolus Logo" 
+              width={100} 
+              height={32} 
+              className="h-8 w-auto object-contain" 
+              priority
+            />
           </Link>
         </div>
 

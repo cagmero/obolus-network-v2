@@ -26,7 +26,7 @@ export default function BridgePage() {
         <header className="mb-12">
           <div className="flex items-center gap-3 mb-4 text-primary">
             <Link2 className="w-5 h-5" />
-            <span className="text-xs font-bold tracking-[0.3em] uppercase">Obolus // Satellite Bridge</span>
+            <span className="text-xs font-bold tracking-[0.3em] uppercase">Satellite Bridge</span>
           </div>
           <h1 className="text-4xl font-black tracking-tighter mb-4">
             Link Collateral via CCIP
@@ -160,7 +160,7 @@ export default function BridgePage() {
         <div className="mt-12 p-6 rounded-3xl bg-primary/5 border border-primary/10 flex items-start gap-4">
            <Info className="w-5 h-5 text-primary shrink-0 mt-1" />
            <p className="text-xs leading-relaxed text-foreground/60">
-              Obolus Satellite Bridges utilize **Chainlink CCIP (Cross-Chain Interoperability Protocol)** to securely transmit state proofs. 
+              Satellite Bridges utilize **Chainlink CCIP (Cross-Chain Interoperability Protocol)** to securely transmit state proofs. 
               This process usually takes between 3-15 minutes depending on finality depth for each chain. 
               Native gas or LINK is used to pay for cross-chain relay fees.
            </p>
@@ -170,4 +170,5 @@ export default function BridgePage() {
     </div>
   )
 }
+
 

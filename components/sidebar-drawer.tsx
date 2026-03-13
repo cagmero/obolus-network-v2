@@ -44,9 +44,13 @@ export function SidebarDrawer({ open, onOpenChange }: { open?: boolean; onOpenCh
       <SheetContent side="left" className="w-[280px] p-0 bg-[#070B12] border-r border-white/5 flex flex-col font-mono uppercase">
         <SheetHeader className="p-6 pb-2">
           <div className="flex items-center gap-2">
-            <span className="font-bold tracking-tighter text-2xl font-display text-primary">
-              Obolus
-            </span>
+            <NextImage 
+              src="/logo.png" 
+              alt="Obolus Logo" 
+              width={100} 
+              height={32} 
+              className="h-8 w-auto object-contain" 
+            />
           </div>
         </SheetHeader>
 

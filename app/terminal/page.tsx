@@ -60,7 +60,7 @@ export default function TerminalPage() {
             <div className="flex items-center justify-between mb-8 shrink-0">
                <div className="flex items-center gap-3">
                   <div className="size-3 bg-primary rounded-full animate-pulse shadow-[0_0_12px_#A6F24A]" />
-                  <h1 className="text-xl font-bold tracking-widest uppercase">Obolus_LENDING_REGISTRY // V1.4.2</h1>
+                  <h1 className="text-xl font-bold tracking-widest uppercase">LENDING_REGISTRY // V1.4.2</h1>
                </div>
                <div className="flex items-center gap-4">
                   <div className="text-[10px] text-foreground/40 font-bold uppercase tracking-widest">
@@ -111,14 +111,14 @@ export default function TerminalPage() {
                            <div className="size-2.5 rounded-full bg-amber-500/80" />
                            <div className="size-2.5 rounded-full bg-primary/80" />
                         </div>
-                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Obolus_TERMINAL_V.sh</span>
+                        <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">TERMINAL_V.sh</span>
                      </div>
                      <div className="text-[9px] text-primary/40 font-mono">SH_SECURE_PATH: /dev/blockchain/avax-main-router</div>
                   </div>
 
                   <div className="flex-1 p-6 font-mono overflow-y-auto relative z-10 scrollbar-hide text-primary/80">
                      <div className="mb-4 text-primary/60 leading-tight">
-                        {`> init --protocol Obolus-lending-master`} <br />
+                        {`> init --protocol lending-master`} <br />
                         {`> loading components [CreditManager, DebtRegistry, LiquidationEngine]...`} <br />
                         {`> establishing ccip_socket connection [Avalanche -> CCIP_ROUTER]...`} <br />
                         {`> status: CONNECTED`}
@@ -205,4 +205,5 @@ export default function TerminalPage() {
       </div>
    )
 }
+
 

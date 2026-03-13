@@ -175,7 +175,8 @@ export default function PoolsPage() {
                                 <path d="M24 4C25.7818 14.2173 33.7827 22.2182 44 24C33.7827 25.7818 25.7818 33.7827 24 44C22.2182 33.7827 14.2173 25.7818 4 24C14.2173 22.2182 22.2182 14.2173 24 4Z" fill="currentColor"></path>
                             </svg>
                         </div>
-                        <h2 className="text-white text-lg font-black tracking-tighter uppercase font-mono">Obolus</h2>
+                        <h2 className="sr-only">Obolus</h2>
+                        <img src="/logo.png" alt="Obolus Logo" className="h-6 w-auto object-contain" />
                     </div>
                     <nav className="hidden lg:flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest font-mono">
                         <Link className="text-primary border-b border-primary/40 pb-1" href="/terminal">TERMINAL</Link>

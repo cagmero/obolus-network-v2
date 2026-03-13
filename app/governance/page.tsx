@@ -31,7 +31,7 @@ export default function GovernancePage() {
         <header className="mb-16">
           <div className="flex items-center gap-3 mb-4 text-primary">
             <ShieldCheck className="w-5 h-5" />
-            <span className="text-xs font-bold tracking-[0.3em] uppercase">Obolus // Protocol Admin</span>
+            <span className="text-xs font-bold tracking-[0.3em] uppercase">Protocol Admin</span>
           </div>
           <h1 className="text-5xl font-black tracking-tighter mb-6">
             Liquidation & <br /> Global Governance
@@ -142,4 +142,5 @@ export default function GovernancePage() {
     </div>
   )
 }
+
 

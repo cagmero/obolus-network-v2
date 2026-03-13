@@ -50,13 +50,13 @@ export default function VaultPage() {
         <header className="mb-16">
           <div className="flex items-center gap-3 mb-4 text-primary">
             <Shield className="w-5 h-5" />
-            <span className="text-xs font-bold tracking-[0.3em] uppercase">Obolus // Cross-Chain Vault</span>
+            <span className="text-xs font-bold tracking-[0.3em] uppercase">Cross-Chain Vault</span>
           </div>
           <h1 className="text-5xl font-black tracking-tighter mb-6">
             Shielded Collateral <br /> Powered by CCIP
           </h1>
           <p className="text-foreground/50 max-w-2xl leading-relaxed">
-            Obolus uses Chainlink CCIP to link lending pools across Ethereum, Polygon, and Base.
+            uses Chainlink CCIP to link lending pools across Ethereum, Polygon, and Base.
             Your credit limit is calculated on Avalanche (Master Chain) while your assets stay in
             sovereign satellite vaults.
           </p>
@@ -196,4 +196,5 @@ export default function VaultPage() {
     </div>
   )
 }
+
 

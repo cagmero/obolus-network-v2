@@ -19,7 +19,7 @@ export default function DocsPage() {
       <aside className="w-72 glass-sidebar flex flex-col custom-scrollbar overflow-y-auto hidden lg:flex bg-background/50">
         <div className="p-6">
           <div className="mb-8">
-            <h1 className="text-white text-sm font-bold tracking-widest font-mono mb-1">Obolus_DOCS</h1>
+            <h1 className="text-white text-sm font-bold tracking-widest font-mono mb-1">_DOCS</h1>
             <p className="text-primary/60 text-[10px] font-mono uppercase tracking-[0.2em]">v2.4.0-STABLE_RELEASE</p>
           </div>
           <nav className="space-y-1">
@@ -78,7 +78,7 @@ export default function DocsPage() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">BNPL_MECHANICS</span>
             </h1>
             <p className="text-white/50 text-base font-mono leading-relaxed max-w-2xl uppercase tracking-tight">
-              Technical specifications for the Obolus global payments protocol. This module governs automated merchant settlements and stablecoin payment flows.
+              Technical specifications for the global payments protocol. This module governs automated merchant settlements and stablecoin payment flows.
             </p>
           </div>
 
@@ -90,7 +90,7 @@ export default function DocsPage() {
                 <h3 className="text-2xl font-bold tracking-tight uppercase italic">CREDIT_CALCULATION</h3>
               </div>
               <p className="text-white/60 font-mono text-xs leading-relaxed mb-6 uppercase tracking-wide">
-                The Obolus payment engine calculates real-time settlement availability based on the transaction volume and merchant reputation. The standard formula incorporates the Obolus Trust Score (ITS).
+                The payment engine calculates real-time settlement availability based on the transaction volume and merchant reputation. The standard formula incorporates the Trust Score (ITS).
               </p>
 
               {/* Terminal Code Block */}
@@ -101,12 +101,12 @@ export default function DocsPage() {
                     <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
                     <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
                   </div>
-                  <span className="text-[9px] font-mono text-white/30 uppercase tracking-widest">bash — Obolus-cli</span>
+                  <span className="text-[9px] font-mono text-white/30 uppercase tracking-widest">bash — -cli</span>
                 </div>
                 <div className="p-5 font-mono text-[11px] overflow-x-auto leading-relaxed">
                   <div className="flex gap-4">
                     <span className="text-white/20 select-none">1</span>
-                    <span className="text-primary">Obolus</span>
+                    <span className="text-primary"></span>
                     <span className="text-white uppercase">query-credit --user</span>
                     <span className="text-[#f1fa8c]">0x71C...392b</span>
                   </div>
@@ -147,7 +147,7 @@ export default function DocsPage() {
                 <h3 className="text-2xl font-bold tracking-tight uppercase italic">COLLATERAL_HEALTH</h3>
               </div>
               <p className="text-white/60 font-mono text-xs leading-relaxed mb-4 uppercase tracking-wide">
-                Settlement health is monitored block-by-block via the Obolus Oracle Network.
+                Settlement health is monitored block-by-block via the Oracle Network.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-primary/20 transition-all group">
@@ -211,3 +211,4 @@ export default function DocsPage() {
     </div>
   )
 }
+
