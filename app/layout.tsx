@@ -18,7 +18,6 @@ export const metadata: Metadata = {
   creator: "Obolus",
   publisher: "Obolus",
   robots: "index, follow",
-  viewport: "width=device-width, initial-scale=1",
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -37,6 +36,13 @@ export const metadata: Metadata = {
   },
   category: "Finance",
 }
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+}
+
+export const dynamic = 'force-dynamic'
 
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
