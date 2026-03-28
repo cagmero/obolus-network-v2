@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Search, ArrowUpDown, ChevronDown, Activity, TrendingUp, BarChart3, Search as SearchIcon } from "lucide-react"
+import { Search, ArrowUpDown, ChevronDown, Activity, TrendingUp, BarChart3, Search as SearchIcon, Globe, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VAULTS, Vault } from "@/lib/vaults"
 import { cn } from "@/lib/utils"
 import { useAccount, useReadContract, useChainId } from "wagmi"
 import { formatUnits } from "viem"
+import { useAllPrices } from "@/hooks/useMarketData"
+import { GM_TOKEN_ADDRESSES, MOCK_PRICES } from "@/lib/ondoOracle"
 
 const ERC20_ABI = [
   {
@@ -23,6 +25,7 @@ export default function VaultsPage() {
   const [filter, setFilter] = useState<'ALL' | 'MY_POSITIONS' | 'BLUE_CHIPS' | 'TECH' | 'ETF'>('ALL')
   const [search, setSearch] = useState('')
   const chainId = useChainId()
+  const { data: prices, isLoading: pricesLoading } = useAllPrices()
 
   const filteredVaults = VAULTS.filter(vault => {
     const matchesSearch = vault.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -51,7 +54,7 @@ export default function VaultsPage() {
           </div>
           <div className="flex flex-col">
             <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Total_TVL</span>
-            <span className="text-xl font-bold text-foreground">$0.00</span>
+            <span className="text-xl font-bold text-foreground font-black tabular-nums tracking-tighter">$4.2M</span>
           </div>
           <div className="flex flex-col">
             <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Avg_APY</span>
@@ -105,17 +108,14 @@ export default function VaultsPage() {
                   <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Asset</span>
                 </th>
                 <th className="px-6 py-4">
-                  <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Platform</span>
-                </th>
-                <th className="px-6 py-4">
-                  <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
-                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">APY</span>
+                   <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Live Price</span>
                     <ArrowUpDown className="w-3 h-3 text-foreground/20" />
                   </div>
                 </th>
                 <th className="px-6 py-4">
                   <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
-                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Daily</span>
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">APY</span>
                     <ArrowUpDown className="w-3 h-3 text-foreground/20" />
                   </div>
                 </th>
@@ -139,11 +139,11 @@ export default function VaultsPage() {
             <tbody>
               {filteredVaults.length > 0 ? (
                 filteredVaults.map((vault) => (
-                  <VaultRow key={vault.id} vault={vault} isLocalhost={chainId === 1337} />
+                  <VaultRow key={vault.id} vault={vault} isLocalhost={chainId === 1337} prices={prices} />
                 ))
               ) : (
                 <tr>
-                   <td colSpan={7} className="px-6 py-20 text-center opacity-30 text-[10px] uppercase font-black tracking-widest">
+                   <td colSpan={6} className="px-6 py-20 text-center opacity-30 text-[10px] uppercase font-black tracking-widest">
                      No_vaults_found_matching_search_parameters
                    </td>
                 </tr>
@@ -156,7 +156,7 @@ export default function VaultsPage() {
   )
 }
 
-function VaultRow({ vault, isLocalhost }: { vault: Vault, isLocalhost: boolean }) {
+function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: boolean, prices: any }) {
   const { address } = useAccount()
   const { data: balanceValue } = useReadContract({
     address: vault.tokenAddress as `0x${string}`,
@@ -166,6 +166,8 @@ function VaultRow({ vault, isLocalhost }: { vault: Vault, isLocalhost: boolean }
   })
 
   const formattedBalance = balanceValue ? formatUnits(balanceValue, 18) : "0.00"
+  const isOndo = !!GM_TOKEN_ADDRESSES[vault.symbol];
+  const currentPrice = prices?.[vault.symbol] || MOCK_PRICES[vault.symbol];
 
   return (
     <tr key={vault.id} className="group hover:bg-white/5 transition-colors border-b border-border/5 last:border-0 relative">
@@ -179,34 +181,50 @@ function VaultRow({ vault, isLocalhost }: { vault: Vault, isLocalhost: boolean }
                     <span className="text-[8px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1 py-0.5 rounded font-black tracking-tighter">LOCAL_TESTNET</span>
                  )}
                </div>
-               <span className="text-[10px] text-foreground/40 font-bold uppercase">{vault.name}</span>
+               <span className="text-[10px] text-foreground/40 font-bold uppercase tracking-tight">{vault.name}</span>
             </div>
          </div>
       </td>
       <td className="px-6 py-5">
-         <span className="text-[10px] font-bold text-foreground/60 uppercase group-hover:text-foreground transition-colors">{vault.platform}</span>
+         <div className="flex flex-col gap-1">
+            <div className="text-base font-black text-foreground tabular-nums tracking-tighter">
+               ${currentPrice ? currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
+            </div>
+            <div className={cn(
+              "inline-flex self-start px-1 py-0.5 rounded text-[7px] font-black tracking-widest uppercase border leading-none",
+              isOndo 
+                ? "bg-green-500/10 text-green-500 border-green-500/20" 
+                : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+            )}>
+              {isOndo ? "ORACLE" : "MOCK"}
+            </div>
+         </div>
       </td>
       <td className="px-6 py-5">
          <div className="flex flex-col">
             <span className="text-sm font-black text-green-500">{vault.mockAPY}%</span>
-            <span className="text-[9px] text-foreground/20 uppercase font-black">Performance_Fee: 0%</span>
+            <span className="text-[9px] text-foreground/20 uppercase font-black">Perf_Fee: 0%</span>
          </div>
       </td>
       <td className="px-6 py-5 whitespace-nowrap">
-         <span className="text-[11px] font-bold text-foreground/80">{vault.mockDailyAPY}%</span>
+         <span className="text-[11px] font-bold text-foreground/80 tabular-nums tracking-tight">
+            ${(vault.mockTVL / 1000).toFixed(1)}k
+         </span>
       </td>
       <td className="px-6 py-5 whitespace-nowrap">
-         <span className="text-[11px] font-bold text-foreground/80">$0.00</span>
-      </td>
-      <td className="px-6 py-5 whitespace-nowrap">
-         <span className="text-[11px] font-bold text-foreground/80">
+         <span className="text-[11px] font-bold text-foreground/80 tabular-nums">
            {parseFloat(formattedBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
          </span>
       </td>
-      <td className="px-6 py-5 text-right">
+      <td className="px-6 py-5 text-right flex items-center justify-end gap-2">
+         <Link href={`/assets/${vault.symbol.toLowerCase()}`}>
+          <Button className="h-7 bg-white/5 hover:bg-white/10 text-foreground/60 hover:text-foreground border border-border/20 text-[8px] font-black uppercase tracking-widest px-3 rounded-lg transition-all">
+            VIEW
+          </Button>
+         </Link>
          <Link href={`/vault/${vault.id}`}>
-          <Button className="h-8 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 text-[9px] font-black uppercase tracking-widest px-4 rounded-xl transition-all">
-            [DEPOSIT]
+          <Button className="h-7 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 text-[8px] font-black uppercase tracking-widest px-3 rounded-lg transition-all">
+            DEPOSIT
           </Button>
          </Link>
       </td>

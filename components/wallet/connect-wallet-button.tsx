@@ -3,8 +3,9 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, ShieldCheck } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-export function ConnectWalletButton() {
+export function ConnectWalletButton({ className }: { className?: string }) {
   return (
     <ConnectButton.Custom>
       {({
@@ -20,9 +21,10 @@ export function ConnectWalletButton() {
 
         return (
           <div
+            className={className}
             {...(!ready && {
               'aria-hidden': true,
-              'className': 'opacity-0 pointer-events-none user-select-none',
+              'className': cn(className, 'opacity-0 pointer-events-none user-select-none'),
             })}
           >
             {(() => {
