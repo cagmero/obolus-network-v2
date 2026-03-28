@@ -1,15 +1,28 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Search, ArrowUpDown, ChevronDown, Activity, TrendingUp, BarChart3, Search as SearchIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VAULTS, Vault } from "@/lib/vaults"
 import { cn } from "@/lib/utils"
+import { useAccount, useReadContract, useChainId } from "wagmi"
+import { formatUnits } from "viem"
+
+const ERC20_ABI = [
+  {
+    "inputs": [{ "name": "account", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+] as const
 
 export default function VaultsPage() {
   const [filter, setFilter] = useState<'ALL' | 'MY_POSITIONS' | 'BLUE_CHIPS' | 'TECH' | 'ETF'>('ALL')
   const [search, setSearch] = useState('')
+  const chainId = useChainId()
 
   const filteredVaults = VAULTS.filter(vault => {
     const matchesSearch = vault.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -114,7 +127,7 @@ export default function VaultsPage() {
                 </th>
                 <th className="px-6 py-4">
                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
-                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Deposited</span>
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Balance</span>
                     <ArrowUpDown className="w-3 h-3 text-foreground/20" />
                   </div>
                 </th>
@@ -126,42 +139,7 @@ export default function VaultsPage() {
             <tbody>
               {filteredVaults.length > 0 ? (
                 filteredVaults.map((vault) => (
-                  <tr key={vault.id} className="group hover:bg-white/5 transition-colors border-b border-border/5 last:border-0 relative">
-                    <td className="px-6 py-5">
-                       <div className="flex items-center gap-4">
-                          <div className={cn("w-1 h-8 rounded-full")} style={{ backgroundColor: vault.color }} />
-                          <div className="flex flex-col">
-                             <span className="text-sm font-black text-foreground uppercase tracking-tight">{vault.symbol}</span>
-                             <span className="text-[10px] text-foreground/40 font-bold uppercase">{vault.name}</span>
-                          </div>
-                       </div>
-                    </td>
-                    <td className="px-6 py-5">
-                       <span className="text-[10px] font-bold text-foreground/60 uppercase group-hover:text-foreground transition-colors">{vault.platform}</span>
-                    </td>
-                    <td className="px-6 py-5">
-                       <div className="flex flex-col">
-                          <span className="text-sm font-black text-green-500">{vault.mockAPY}%</span>
-                          <span className="text-[9px] text-foreground/20 uppercase font-black">Performance_Fee: 0%</span>
-                       </div>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                       <span className="text-[11px] font-bold text-foreground/80">{vault.mockDailyAPY}%</span>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                       <span className="text-[11px] font-bold text-foreground/80">$0.00</span>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                       <span className="text-[11px] font-bold text-foreground/80">0</span>
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                       <Link href={`/vault/${vault.id}`}>
-                        <Button className="h-8 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 text-[9px] font-black uppercase tracking-widest px-4 rounded-xl transition-all">
-                          [DEPOSIT]
-                        </Button>
-                       </Link>
-                    </td>
-                  </tr>
+                  <VaultRow key={vault.id} vault={vault} isLocalhost={chainId === 1337} />
                 ))
               ) : (
                 <tr>
@@ -175,5 +153,63 @@ export default function VaultsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function VaultRow({ vault, isLocalhost }: { vault: Vault, isLocalhost: boolean }) {
+  const { address } = useAccount()
+  const { data: balanceValue } = useReadContract({
+    address: vault.tokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  })
+
+  const formattedBalance = balanceValue ? formatUnits(balanceValue, 18) : "0.00"
+
+  return (
+    <tr key={vault.id} className="group hover:bg-white/5 transition-colors border-b border-border/5 last:border-0 relative">
+      <td className="px-6 py-5">
+         <div className="flex items-center gap-4">
+            <div className={cn("w-1 h-8 rounded-full")} style={{ backgroundColor: vault.color }} />
+            <div className="flex flex-col">
+               <div className="flex items-center gap-2">
+                 <span className="text-sm font-black text-foreground uppercase tracking-tight">{vault.symbol}</span>
+                 {isLocalhost && (
+                    <span className="text-[8px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1 py-0.5 rounded font-black tracking-tighter">LOCAL_TESTNET</span>
+                 )}
+               </div>
+               <span className="text-[10px] text-foreground/40 font-bold uppercase">{vault.name}</span>
+            </div>
+         </div>
+      </td>
+      <td className="px-6 py-5">
+         <span className="text-[10px] font-bold text-foreground/60 uppercase group-hover:text-foreground transition-colors">{vault.platform}</span>
+      </td>
+      <td className="px-6 py-5">
+         <div className="flex flex-col">
+            <span className="text-sm font-black text-green-500">{vault.mockAPY}%</span>
+            <span className="text-[9px] text-foreground/20 uppercase font-black">Performance_Fee: 0%</span>
+         </div>
+      </td>
+      <td className="px-6 py-5 whitespace-nowrap">
+         <span className="text-[11px] font-bold text-foreground/80">{vault.mockDailyAPY}%</span>
+      </td>
+      <td className="px-6 py-5 whitespace-nowrap">
+         <span className="text-[11px] font-bold text-foreground/80">$0.00</span>
+      </td>
+      <td className="px-6 py-5 whitespace-nowrap">
+         <span className="text-[11px] font-bold text-foreground/80">
+           {parseFloat(formattedBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+         </span>
+      </td>
+      <td className="px-6 py-5 text-right">
+         <Link href={`/vault/${vault.id}`}>
+          <Button className="h-8 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 text-[9px] font-black uppercase tracking-widest px-4 rounded-xl transition-all">
+            [DEPOSIT]
+          </Button>
+         </Link>
+      </td>
+    </tr>
   )
 }

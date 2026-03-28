@@ -15,6 +15,7 @@ const NAV = [
   { href: "/markets", label: "Markets" },
   { href: "/privacy", label: "Privacy" },
   { href: "/transactions", label: "Transactions" },
+  { href: "/faucet", label: "FAUCET", isSpecial: true },
 ]
 
 /**
@@ -48,10 +49,12 @@ function HeaderContent({ pathname }: { pathname: string }) {
             key={n.href}
             href={n.href}
             className={cn(
-              "rounded-xl px-3 py-1 text-sm transition-colors",
+              "rounded-xl px-3 py-1 text-sm transition-colors font-bold",
               pathname === n.href
                 ? "bg-primary text-primary-foreground"
-                : "text-foreground/80 hover:text-foreground hover:bg-primary/15",
+                : (n as any).isSpecial 
+                  ? "text-amber-500 hover:bg-amber-500/10 border border-amber-500/20"
+                  : "text-foreground/80 hover:text-foreground hover:bg-primary/15",
             )}
           >
             {n.label}

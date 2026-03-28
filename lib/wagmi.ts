@@ -1,5 +1,5 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
-import { bsc, bscTestnet } from 'wagmi/chains'
+import { bsc, bscTestnet, localhost } from 'wagmi/chains'
 import { parseAbi, defineChain } from 'viem'
 import { cookieStorage, createStorage } from 'wagmi'
 
@@ -16,7 +16,7 @@ export const zamaDevnet = defineChain({
 export const config = getDefaultConfig({
   appName: 'Obolus Network',
   projectId: '1745eedb32cb0f103490b50b14761c85',
-  chains: [zamaDevnet, bsc, bscTestnet],
+  chains: [localhost, zamaDevnet, bsc, bscTestnet],
   ssr: true,
   storage: createStorage({
     storage: cookieStorage
@@ -29,6 +29,11 @@ export const OBOLUS_ADDRESSES = {
     RWAVault: "0x489675685B62bB958B5C9672777A464aBb31B299" as const,
     PositionManager: "0xe7Af7E8E7e9e8790EbB143e90bB3f05126d400E" as const,
     ObolusOracle: "0x91f8Aff3738825e8eB16FC6f6b1A7A4647bDB299" as const,
+  },
+  localhost: {
+    RWAVault: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c" as const,
+    PositionManager: "0x0000000000000000000000000000000000000000" as const, // Not deployed yet
+    ObolusOracle: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed" as const,
   }
 }
 
