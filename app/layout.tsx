@@ -11,9 +11,9 @@ import { Suspense } from "react"
 import Head from "next/head"
 
 export const metadata: Metadata = {
-  title: "Obolus Protocol - Decentralized BNPL",
-  description: "Buy now, pay later with cryptocurrency. Secure EVM-based DeFi lending platform with real-world credit limits.",
-  keywords: "crypto paylater, buy now pay later crypto, obolus protocol, avalanche defi, cryptocurrency lending, decentralized finance, ccip",
+  title: "Obolus — Private Equity Vault on BNB Chain",
+  description: "Deposit tokenized US stocks on BNB Chain with encrypted positions via Zama fhEVM. Nobody sees what you hold.",
+  keywords: "Ondo, Zama, fhEVM, BNB Chain, RWA, Equity, Vault, Privacy",
   authors: [{ name: "Obolus Team" }],
   creator: "Obolus",
   publisher: "Obolus",
@@ -21,10 +21,11 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://obolus.center",
-    title: "Obolus - Revolutionary Crypto PayLater Platform",
-    description: "Experience the future of crypto payments with Obolus. Instant BNPL solutions on Avalanche.",
+    url: "https://obolus.network",
+    title: "Obolus — Your Portfolio. Invisible.",
+    description: "Experience the first privacy-preserving RWA vault on BNB Chain. Secure and confidential US equity exposure.",
     siteName: "Obolus",
+    images: ["/og-image.png"]
   },
   twitter: {
     card: "summary_large_image",

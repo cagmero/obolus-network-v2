@@ -1,36 +1,48 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ConnectGate } from "@/components/connect-gate"
 import { Button } from "@/components/ui/button"
 import { Shield, Key, Lock, Eye, EyeOff, ShieldCheck, Zap, Info, RefreshCw } from "lucide-react"
 import { encrypt64 } from "@/lib/fhevm"
 
 export default function PrivacyPage() {
-  const [demoRevealed, setDemoRevealed] = useState(false)
-  const [encryptedHandle, setEncryptedHandle] = useState<string>("0x7f3a...c291")
-  const [isEncrypting, setIsEncrypting] = useState(false)
+  const [demoStep, setDemoStep] = useState(0)
+  const [displayedText, setDisplayedText] = useState("")
+  const [isAnimating, setIsAnimating] = useState(false)
 
-  const handleEncryptDemo = async () => {
-    if (demoRevealed) {
-      setDemoRevealed(false)
-      return
-    }
+  const steps = [
+    { text: "SCANNING_VAULT_STATE...", type: "system" },
+    { text: "POSITION: 0x7f3a9c8b2d1e4f5a60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e291b4", type: "encrypted" },
+    { text: "DECRYPTION_REQUEST_INITIATED...", type: "system" },
+    { text: "DECRYPTED: $12,450.00 // ACCESS_GRANTED", type: "success" }
+  ]
 
-    setIsEncrypting(true)
-    try {
-      // Mock value for demo: $12,450.00 -> 12450000000000000000000n
-      const mockValue = BigInt(12450) * BigInt(10 ** 18)
-      const result = await encrypt64(mockValue)
-      // The result is a Uint8Array or handle. We'll show a hex string for demo.
-      setEncryptedHandle("0x" + Array.from(result.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join('') + "...")
-      setDemoRevealed(true)
-    } catch (e) {
-      console.error("Encryption failed", e)
-    } finally {
-      setIsEncrypting(false)
+  const runDemo = async () => {
+    setIsAnimating(true)
+    setDemoStep(0)
+    setDisplayedText("")
+
+    for (let i = 0; i < steps.length; i++) {
+      setDemoStep(i)
+      const targetText = steps[i].text
+      let currentText = ""
+      
+      // Typewriter effect
+      for (let j = 0; j < targetText.length; j++) {
+        currentText += targetText[j]
+        setDisplayedText(currentText)
+        await new Promise(r => setTimeout(r, 20))
+      }
+      
+      await new Promise(r => setTimeout(r, 1500))
     }
+    setIsAnimating(false)
   }
+
+  useEffect(() => {
+    runDemo()
+  }, [])
 
   return (
     <ConnectGate>
@@ -119,26 +131,27 @@ export default function PrivacyPage() {
                     <Zap className="size-4 text-primary" />
                     ENCRYPTION_DEMO
                   </h3>
-                  <div className="bg-background/60 border border-border/30 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-6 group hover:border-primary/20 transition-all border-dashed">
-                    <div className="space-y-4 w-full">
+                  <div className="bg-background/60 border border-border/30 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-6 group hover:border-primary/20 transition-all border-dashed min-h-[300px]">
+                    <div className="space-y-6 w-full">
                        <span className="text-[10px] text-foreground/40 font-bold uppercase tracking-widest">
-                         {demoRevealed ? "ENCRYPTED_CIPHERTEXT" : "CONFIDENTIAL_VALUE"}
+                         fhEVM_EXECUTION_STREAM
                        </span>
-                       <div className="p-4 bg-black/40 border border-white/5 rounded-lg w-full font-mono text-xs break-all text-foreground/80 overflow-hidden text-ellipsis h-16 flex items-center justify-center uppercase">
-                          {demoRevealed ? (
-                            <span className="text-primary/70 tracking-widest font-bold">{encryptedHandle}</span>
-                          ) : (
-                            <span className="text-2xl font-black text-white">$12,450.00</span>
-                          )}
+                       <div className="p-8 bg-black/60 border border-white/5 rounded-lg w-full font-mono text-sm break-all text-foreground/80 overflow-hidden min-h-[120px] flex items-center justify-center uppercase leading-relaxed">
+                          <span className={`${
+                            steps[demoStep]?.type === 'success' ? 'text-primary' : 
+                            steps[demoStep]?.type === 'encrypted' ? 'text-primary/40 text-[10px]' : 'text-white/70'
+                          } tracking-widest font-bold`}>
+                            {displayedText}
+                          </span>
                        </div>
                     </div>
                     <Button 
-                      onClick={handleEncryptDemo}
-                      disabled={isEncrypting}
+                      onClick={runDemo}
+                      disabled={isAnimating}
                       className="bg-primary hover:bg-primary/90 text-primary-foreground font-black px-10 py-6 rounded-xl flex items-center gap-3 text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(var(--primary),0.2)]"
                     >
-                      {isEncrypting ? <RefreshCw className="size-4 animate-spin" /> : (demoRevealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />)}
-                      {isEncrypting ? "ENCRYPTING..." : (demoRevealed ? "RESET_DEMO" : "ENCRYPT_VAULT")}
+                      {isAnimating ? <RefreshCw className="size-4 animate-spin" /> : <Eye className="size-4" />}
+                      {isAnimating ? "PROCESSING..." : "REPLAY_SEQUENCE"}
                     </Button>
                   </div>
                 </div>
@@ -151,7 +164,7 @@ export default function PrivacyPage() {
                       </div>
                       <div className="flex-1 overflow-hidden">
                          <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest block">Verifiable Hash</span>
-                         <span className="text-[11px] font-bold text-white/50 truncate block">{encryptedHandle}</span>
+                         <span className="text-[11px] font-bold text-white/50 truncate block">0x7f3a9c8b...e291b4</span>
                       </div>
                       <Button className="h-8 px-4 bg-secondary hover:bg-secondary/80 text-foreground font-bold text-[10px] tracking-widest uppercase rounded-lg">
                         VERIFY

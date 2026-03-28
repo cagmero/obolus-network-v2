@@ -5,13 +5,26 @@ import { Button } from "@/components/ui/button"
 import { Globe, TrendingUp, TrendingDown, Clock, Shield, Search, Zap } from "lucide-react"
 import { GM_TOKENS } from "@/lib/constants"
 import Link from "next/link"
-import { useGMTokenPrices } from "@/hooks/useVaults"
+import { useGMTokenPrices, usePerformanceData, DEMO_MODE } from "@/hooks/useVaults"
 import { formatUnits } from "viem"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TerminalLoader } from "@/components/terminal-loader"
+import { TerminalErrorDisplay } from "@/components/terminal-error-display"
+import { useAccount, useChainId } from "wagmi"
 
 export default function MarketsPage() {
-  const { data: prices, results } = useGMTokenPrices()
-  const isLoading = results.some(r => r.isLoading)
+  const { data: prices, loading: pricesLoading } = useGMTokenPrices()
+  const { change24h } = usePerformanceData()
+  const { address, isConnected } = useAccount()
+  const chainId = useChainId()
+
+  if (isConnected && pricesLoading && !DEMO_MODE) {
+    return <TerminalLoader />
+  }
+
+  if (isConnected && chainId !== 7202 && chainId !== 97 && chainId !== 56) {
+    return <TerminalErrorDisplay />
+  }
 
   return (
     <ConnectGate>
@@ -48,7 +61,7 @@ export default function MarketsPage() {
           <div className="glass-card rounded-2xl p-8 border-l-4 border-l-white/10 relative overflow-hidden group">
             <p className="text-foreground/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Last Update</p>
             <div className="flex items-baseline gap-2">
-              <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">{isLoading ? "SYNC..." : "LIVE"}</h1>
+              <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">{pricesLoading && !DEMO_MODE ? "SYNC..." : "LIVE"}</h1>
             </div>
             <Clock className="absolute -bottom-2 -right-2 w-16 h-16 text-white/5 group-hover:text-white/10 transition-colors" />
           </div>
@@ -75,7 +88,7 @@ export default function MarketsPage() {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {Object.entries(GM_TOKENS).map(([key, token]) => {
-                    const price = prices[token.symbol] || 0n
+                    const price = (prices as Record<string, bigint>)[token.symbol] || BigInt(0)
                     return (
                       <tr key={key} className="group hover:bg-white/[0.04] transition-all">
                         <td className="px-6 py-6 font-bold flex items-center gap-3 tracking-tight">
@@ -84,10 +97,10 @@ export default function MarketsPage() {
                         </td>
                         <td className="px-6 py-6 text-foreground/40 font-bold tabular-nums text-xs uppercase">{token.name}</td>
                         <td className="px-6 py-6 font-black tabular-nums tracking-tighter text-lg">
-                           {isLoading ? <Skeleton className="h-6 w-24 bg-white/5" /> : `$${formatUnits(price, 18)}`}
+                           {pricesLoading && !DEMO_MODE ? <Skeleton className="h-6 w-24 bg-white/5" /> : `$${formatUnits(price, 18)}`}
                         </td>
                         <td className="px-6 py-6 font-bold tabular-nums text-sm text-primary">
-                          +0.2% <TrendingUp className="inline ml-1 size-3" />
+                          {change24h} <TrendingUp className="inline ml-1 size-3" />
                         </td>
                         <td className="px-6 py-6">
                            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/20 text-[9px] font-bold text-primary tracking-widest uppercase">

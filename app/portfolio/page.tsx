@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Lock, Eye, EyeOff, BarChart3, TrendingUp, ShieldCheck } from "lucide-react"
 import { GM_TOKENS } from "@/lib/constants"
 import { useAccount } from "wagmi"
-import { usePortfolioPositions, useVaultBalance, usePortfolioNAV, useGMTokenPrices } from "@/hooks/useVaults"
+import { usePortfolioPositions, useVaultBalance, usePortfolioNAV, useGMTokenPrices, usePerformanceData, DEMO_MODE } from "@/hooks/useVaults"
 import { formatUnits } from "viem"
+import { TerminalLoader } from "@/components/terminal-loader"
+import { TerminalErrorDisplay } from "@/components/terminal-error-display"
+import { useChainId } from "wagmi"
 
 export default function PortfolioPage() {
   const { address } = useAccount()
@@ -15,13 +18,23 @@ export default function PortfolioPage() {
 
   const { data: positions, loading: positionsLoading } = usePortfolioPositions(address)
   const { data: balance } = useVaultBalance(address)
-  const { data: nav } = usePortfolioNAV(address)
-  const { data: prices } = useGMTokenPrices()
+  const { data: nav } = usePortfolioNAV()
+  const { data: prices, loading: pricesLoading } = useGMTokenPrices()
+  const { change24h, volatility, alpha } = usePerformanceData()
+  const chainId = useChainId()
 
   const toggleDecrypt = (symbol: string) => {
     setDecryptedRows(prev => 
       prev.includes(symbol) ? prev.filter(s => s !== symbol) : [...prev, symbol]
     )
+  }
+
+  if (address && (positionsLoading || pricesLoading) && !DEMO_MODE) {
+    return <TerminalLoader />
+  }
+
+  if (address && chainId !== 7202 && chainId !== 97 && chainId !== 56) {
+    return <TerminalErrorDisplay />
   }
 
   return (
@@ -43,7 +56,7 @@ export default function PortfolioPage() {
             <p className="text-foreground/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Vault Total NAV</p>
             <div className="flex items-baseline gap-2">
               <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">
-                ${formatUnits(nav || 0n, 18)}
+                ${formatUnits(nav || BigInt(0), 18)}
               </h1>
               <span className="text-primary font-bold text-xs tracking-widest uppercase">USD</span>
             </div>
@@ -54,7 +67,7 @@ export default function PortfolioPage() {
             <p className="text-foreground/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">User Shares</p>
             <div className="flex items-baseline gap-2">
               <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">
-                {formatUnits(balance || 0n, 18)}
+                {formatUnits(balance || BigInt(0), 18)}
               </h1>
               <span className="text-white/30 font-bold text-xs tracking-widest uppercase truncate max-w-[80px]">wGM_SHARES</span>
             </div>
@@ -64,8 +77,8 @@ export default function PortfolioPage() {
           <div className="glass-card rounded-2xl p-8 border-l-4 border-l-white/10 relative overflow-hidden group">
             <p className="text-foreground/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Portfolio Change 24H</p>
             <div className="flex items-baseline gap-2">
-              <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">+0.00%</h1>
-              <span className="text-white/30 font-bold text-xs tracking-widest uppercase">STABLE</span>
+              <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">{change24h}</h1>
+              <span className="text-white/30 font-bold text-xs tracking-widest uppercase">{volatility}</span>
             </div>
             <BarChart3 className="absolute -bottom-2 -right-2 w-16 h-16 text-white/5 group-hover:text-white/10 transition-colors" />
           </div>
@@ -94,10 +107,10 @@ export default function PortfolioPage() {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {Object.entries(GM_TOKENS).map(([key, token]) => {
-                    const isDecrypted = decryptedRows.includes(token.symbol)
-                    const position = positions[token.symbol] || 0n
-                    const price = prices[token.symbol] || 0n
-                    const value = (position * price) / 10n**18n
+                    const isDecrypted = DEMO_MODE || decryptedRows.includes(token.symbol)
+                    const position = (positions as Record<string, bigint>)[token.symbol] || BigInt(0)
+                    const price = (prices as Record<string, bigint>)[token.symbol] || BigInt(0)
+                    const value = (position * price) / BigInt("1000000000000000000")
                     
                     return (
                       <tr key={key} className="group hover:bg-white/[0.04] transition-all">

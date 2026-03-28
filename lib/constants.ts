@@ -6,8 +6,8 @@ export const ONDO_SYNTHETIC_SHARES_ORACLE_BSC = "0xF4Fd8a1B412633e10527454137A29
 export const ONDO_GM_LIMIT_ORDER_BSC = "0x96b525B1a93f31E65F4aAf18C53842eD28525D48"
 
 export const GM_TOKENS = {
-  TSLAon: { symbol: "TSLAon", name: "Tesla", color: "#E31937" },
-  NVDAon: { symbol: "NVDAon", name: "Nvidia", color: "#76B900" },
-  SPYon:  { symbol: "SPYon",  name: "S&P 500", color: "#4A90D9" },
-  QQQon:  { symbol: "QQQon",  name: "Nasdaq 100", color: "#9B59B6" },
+  TSLAon: { symbol: "TSLAon", name: "Tesla", color: "#E31937", address: "0x1111111111111111111111111111111111111111" },
+  NVDAon: { symbol: "NVDAon", name: "Nvidia", color: "#76B900", address: "0x2222222222222222222222222222222222222222" },
+  SPYon:  { symbol: "SPYon",  name: "S&P 500", color: "#4A90D9", address: "0x3333333333333333333333333333333333333333" },
+  QQQon:  { symbol: "QQQon",  name: "Nasdaq 100", color: "#9B59B6", address: "0x4444444444444444444444444444444444444444" },
 }

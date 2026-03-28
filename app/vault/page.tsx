@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Lock, Eye, EyeOff, Shield, RefreshCw, ChevronRight, ArrowDownLeft, Zap } from "lucide-react"
 import { GM_TOKENS } from "@/lib/constants"
 import { useAccount, useChainId } from "wagmi"
-import { useVaultBalance, useDeposit, useWithdraw, useGMTokenPrices, useDecryptBalance } from "@/hooks/useVaults"
+import { useVaultBalance, useDeposit, useWithdraw, useGMTokenPrices, useDecryptBalance, DEMO_MODE } from "@/hooks/useVaults"
 import { formatUnits } from "viem"
+import { TerminalLoader } from "@/components/terminal-loader"
+import { TerminalErrorDisplay } from "@/components/terminal-error-display"
 
 export default function VaultPage() {
   const { address, isConnected } = useAccount()
@@ -24,39 +26,72 @@ export default function VaultPage() {
   const { execute: withdrawGM } = useWithdraw()
 
   const [txStatus, setTxStatus] = useState<string>("IDLE")
+  const [logs, setLogs] = useState<{msg: string, type: 'pending' | 'success' | 'error'}[]>([
+    { msg: "VAULT_INITIALIZED // ENCRYPTION_READY", type: 'success' }
+  ])
 
   const toggleToken = (symbol: string) => {
     setSelectedTokens([symbol])
   }
 
+  const addLog = (msg: string, type: 'pending' | 'success' | 'error') => {
+    setLogs(prev => [{ msg, type }, ...prev].slice(0, 5))
+  }
+
   const handleDeposit = async () => {
     if (!selectedTokens[0] || !amount) return
+    const id = Math.random().toString(16).slice(2, 10).toUpperCase()
     setTxStatus("PENDING")
+    addLog(`TX_${id}_PENDING // VAULT_DEPOSIT`, 'pending')
+    
     try {
       const token = Object.values(GM_TOKENS).find(t => t.symbol === selectedTokens[0])
       if (token) {
         await depositGM(token.address as `0x${string}`, amount)
         setTxStatus("SUCCESS")
+        addLog(`TX_${id}_CONFIRMED // +${amount} ${selectedTokens[0]}`, 'success')
       }
     } catch (e) {
       console.error(e)
       setTxStatus("ERROR")
+      addLog(`TX_${id}_FAILED // RPC_ERROR`, 'error')
     }
   }
 
   const handleWithdraw = async () => {
     if (!selectedTokens[0] || !withdrawAmount) return
+    const id = Math.random().toString(16).slice(2, 10).toUpperCase()
     setTxStatus("PENDING")
+    addLog(`TX_${id}_PENDING // VAULT_WITHDRAW`, 'pending')
+
     try {
       const token = Object.values(GM_TOKENS).find(t => t.symbol === selectedTokens[0])
       if (token) {
         await withdrawGM(token.address as `0x${string}`, withdrawAmount)
         setTxStatus("SUCCESS")
+        addLog(`TX_${id}_CONFIRMED // -${withdrawAmount} SHARES`, 'success')
       }
     } catch (e) {
       console.error(e)
       setTxStatus("ERROR")
+      addLog(`TX_${id}_FAILED // RPC_ERROR`, 'error')
     }
+  }
+
+  // Handle Loading States
+  const { loading: isPricesLoading } = useGMTokenPrices()
+  const { isLoading: isBalanceLoading } = useVaultBalance(address)
+
+  if (isConnected && (isPricesLoading || isBalanceLoading) && !DEMO_MODE) {
+    return (
+      <div className="flex flex-col gap-6 py-8 font-mono">
+        <TerminalLoader />
+      </div>
+    )
+  }
+
+  if (isConnected && chainId !== 7202 && chainId !== 97 && chainId !== 56) {
+    return <TerminalErrorDisplay />
   }
 
   return (
@@ -103,7 +138,7 @@ export default function VaultPage() {
                         </div>
                       </div>
                       <div className="font-bold text-foreground/70">
-                        ${formatUnits((prices as any)[token.symbol] || 0n, 18)}
+                        ${formatUnits((prices as any)[token.symbol] || BigInt(0), 18)}
                       </div>
                     </div>
                   ))}
@@ -211,8 +246,17 @@ export default function VaultPage() {
 
              <div className="bg-card/20 border border-border/40 rounded-2xl p-6 space-y-6">
                 <div className="text-[10px] text-foreground/50 uppercase tracking-widest font-bold">CONFIDENTIAL_LOGS</div>
-                <div className="space-y-6 text-foreground/60 text-[11px]">
-                   <p className="border-l-2 border-primary/20 pl-4 py-1 italic">
+                <div className="space-y-3 text-[10px] font-mono">
+                   {logs.map((log, i) => (
+                     <div key={i} className={`flex items-center gap-2 ${
+                       log.type === 'pending' ? 'text-primary animate-pulse' : 
+                       log.type === 'error' ? 'text-red-500' : 'text-primary'
+                     }`}>
+                       <ChevronRight className="w-3 h-3" />
+                       <span className="truncate">{log.msg}</span>
+                     </div>
+                   ))}
+                   <p className="pt-4 border-t border-white/5 opacity-40 italic text-[9px]">
                      Only you can see the decrypted contents of this vault. All other ledger participants see encrypted handles.
                    </p>
                 </div>
