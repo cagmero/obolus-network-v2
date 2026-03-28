@@ -31,6 +31,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
 
+import { usePortfolioNAVHistory } from "@/hooks/useChartData"
+import NAVChart from "@/components/NAVChart"
+
 export default function PortfolioPage() {
   const { address } = useAccount()
   const [decryptedRows, setDecryptedRows] = useState<string[]>([])
@@ -41,6 +44,8 @@ export default function PortfolioPage() {
   const { data: nav } = usePortfolioNAV()
   const { data: prices, loading: pricesLoading } = useGMTokenPrices()
   const { change24h, volatility } = usePerformanceData()
+
+  const { data: navHistory, isLoading: navLoading } = usePortfolioNAVHistory(address || '')
 
   if (address && (positionsLoading || pricesLoading) && !DEMO_MODE) {
     return <TerminalLoader />
@@ -81,6 +86,9 @@ export default function PortfolioPage() {
               volatility={volatility}
               decryptedRows={decryptedRows}
               setDecryptedRows={setDecryptedRows}
+              navHistory={navHistory}
+              navLoading={navLoading}
+              address={address}
             />
           </TabsContent>
 
@@ -99,7 +107,7 @@ export default function PortfolioPage() {
 
 // ── Tab 1: HOLDINGS ──────────────────────────────────────────────────────────
 
-function HoldingsTab({ positions, nav, prices, change24h, volatility, decryptedRows, setDecryptedRows }: any) {
+function HoldingsTab({ positions, nav, prices, change24h, volatility, decryptedRows, setDecryptedRows, navHistory, navLoading, address }: any) {
   const toggleDecrypt = (symbol: string) => {
     setDecryptedRows((prev: string[]) => 
       prev.includes(symbol) ? prev.filter(s => s !== symbol) : [...prev, symbol]
@@ -111,19 +119,23 @@ function HoldingsTab({ positions, nav, prices, change24h, volatility, decryptedR
   }
 
   return (
-    <div className="space-y-8">
-      {/* Stats Bar */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard label="TOTAL_NAV" value={`$${formatUnits(nav || BigInt(0), 18)}`} subValue="CONSOLIDATED" icon={TrendingUp} primary />
-        <StatCard label="ENCRYPTED_POSITIONS" value={Object.keys(positions || {}).length.toString()} subValue="ACTIVE_ENCLAVES" icon={Lock} />
-        <StatCard label="24H_CHANGE" value={change24h} subValue={volatility} icon={BarChart3} color={change24h?.startsWith('+') ? 'text-green-500' : 'text-red-500'} />
-        <StatCard label="BEST_PERFORMER" value="NVDAon" subValue="+4.2%" icon={Zap} color="text-primary" />
+    <div className="space-y-12">
+      {/* Performance Section */}
+      <section className="space-y-6">
+        <NAVChart 
+          data={navHistory || []} 
+          userAddress={address || 'UNCONNECTED'} 
+          isLoading={navLoading} 
+        />
       </section>
 
       {/* Holdings Table */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-2">
-          <h2 className="text-white text-xs font-black tracking-widest uppercase">HOLDINGS_MATRIX</h2>
+          <div className="flex items-center gap-3">
+             <div className="size-2 bg-primary rounded-full animate-pulse" />
+             <h2 className="text-white text-xs font-black tracking-widest uppercase">HOLDINGS_MATRIX</h2>
+          </div>
           <div className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em]">STATE: ATTESTED // VERIFIED</div>
         </div>
 
@@ -489,19 +501,19 @@ function RiskProtectionTab() {
                     label="NAV drops below" 
                     unit="$" 
                     value={alertSettings.navBelow} 
-                    onChange={(v) => setAlertSettings(p => ({ ...p, navBelow: v }))} 
+                    onChange={(v: string) => setAlertSettings(p => ({ ...p, navBelow: v }))} 
                   />
                  <AlertInput 
                     label="Single position exceeds" 
                     unit="%" 
                     value={alertSettings.posAbove} 
-                    onChange={(v) => setAlertSettings(p => ({ ...p, posAbove: v }))} 
+                    onChange={(v: string) => setAlertSettings(p => ({ ...p, posAbove: v }))} 
                   />
                  <AlertInput 
                     label="24H loss exceeds" 
                     unit="%" 
                     value={alertSettings.lossAbove} 
-                    onChange={(v) => setAlertSettings(p => ({ ...p, lossAbove: v }))} 
+                    onChange={(v: string) => setAlertSettings(p => ({ ...p, lossAbove: v }))} 
                   />
               </div>
 

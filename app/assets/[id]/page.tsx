@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useAccount } from "wagmi"
-import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
+  import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
+import { useAssetPriceHistory } from "@/hooks/useChartData"
+import PriceChart from "@/components/PriceChart"
 
 export default function AssetPage() {
   const params = useParams()
@@ -19,36 +21,40 @@ export default function AssetPage() {
   const { isConnected } = useAccount()
   const symbol = (params.id as string).toUpperCase()
   const vault = VAULTS.find(v => v.symbol.toUpperCase() === symbol)
-  const { data: currentPrice, isLoading } = useTokenPrice(symbol)
+  const { data: currentPrice } = useTokenPrice(symbol)
 
-  const [timeRange, setTimeRange] = useState('1D')
+  const [timeRange, setTimeRange] = useState('1M')
   const [activeTab, setActiveTab] = useState('DEPOSIT')
+
+  const selectedDays = useMemo(() => {
+    switch (timeRange) {
+      case '1D': return 1;
+      case '1W': return 7;
+      case '1M': return 30;
+      case '3M': return 90;
+      case '1Y': return 365;
+      case 'ALL': return 730;
+      default: return 30;
+    }
+  }, [timeRange]);
+
+  const { data: chartData, isLoading: chartLoading } = useAssetPriceHistory(symbol, selectedDays)
   
   if (!vault) {
     return <div className="p-20 text-center font-mono uppercase text-xs font-black">ASSET_NOT_FOUND // ERROR_404</div>
   }
 
-  // Generate mock chart data
-  const chartData = useMemo(() => {
-    const basePrice = currentPrice || MOCK_PRICES[symbol] || 100
-    const points = 50
-    const data = []
-    let current = basePrice * 0.95
-    
-    for (let i = 0; i < points; i++) {
-       current = current + (Math.random() - 0.48) * (basePrice * 0.01)
-       data.push({
-         time: i,
-         price: current
-       })
-    }
-    // Set last point to current price
-    data[points-1].price = basePrice
-    return data
-  }, [currentPrice, symbol])
+  const isUp = useMemo(() => {
+    if (!chartData || chartData.length < 2) return true
+    return chartData[chartData.length - 1].price >= chartData[0].price
+  }, [chartData])
 
-  const priceChange = (Math.random() * 5 - 2.5).toFixed(2)
-  const isUp = parseFloat(priceChange) >= 0
+  const priceChange = useMemo(() => {
+      if (!chartData || chartData.length < 2) return "0.00"
+      const first = chartData[0].price
+      const last = chartData[chartData.length - 1].price
+      return (((last - first) / first) * 100).toFixed(2)
+  }, [chartData])
 
   return (
     <div className="flex flex-col gap-8 font-mono pb-20 max-w-7xl mx-auto">
@@ -92,71 +98,24 @@ export default function AssetPage() {
               </div>
               <div className={cn("text-[11px] font-black tracking-widest uppercase flex items-center justify-end gap-1.5", isUp ? "text-green-500" : "text-red-500")}>
                 {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {isUp ? "+" : ""}{priceChange}% (24H)
+                {isUp ? "+" : ""}{priceChange}% ({timeRange})
               </div>
             </div>
           </div>
 
           {/* Chart Section */}
-          <div className="bg-card/10 border border-border/20 rounded-3xl p-6 backdrop-blur-sm relative group overflow-hidden">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-1 p-1 bg-white/5 rounded-xl border border-border/10">
-                {['1D', '1W', '1M', '3M', '1Y', 'ALL'].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setTimeRange(r)}
-                    className={cn(
-                      "px-3 py-1.5 text-[9px] font-bold tracking-widest uppercase rounded-lg transition-all",
-                      timeRange === r 
-                        ? "bg-primary text-primary-foreground shadow-lg" 
-                        : "text-foreground/40 hover:text-foreground hover:bg-white/5"
-                    )}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-4 text-[9px] text-foreground/40 font-black uppercase tracking-widest">
-                 <div className="flex items-center gap-1">
-                   <div className="w-2 h-0.5 bg-primary" />
-                   Price_Track
-                 </div>
-              </div>
-            </div>
-
-            <div className="h-[350px] w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={isUp ? "#22c55e" : "#ef4444"} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={isUp ? "#22c55e" : "#ef4444"} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="time" hide />
-                    <YAxis 
-                      hide 
-                      domain={['auto', 'auto']}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px', fontFamily: 'monospace' }}
-                      itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                      labelStyle={{ display: 'none' }}
-                      formatter={(v: number) => [`$${v.toFixed(2)}`, 'PRICE']}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke={isUp ? "#22c55e" : "#ef4444"} 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorPrice)" 
-                      animationDuration={1500}
-                    />
-                  </AreaChart>
-               </ResponsiveContainer>
-            </div>
+          <div className={cn(
+            "rounded-[32px] overflow-hidden transition-colors duration-1000",
+            isUp ? "bg-green-500/[0.03]" : "bg-red-500/[0.03]"
+          )}>
+            <PriceChart 
+               data={chartData || []} 
+               symbol={symbol} 
+               color={vault.color} 
+               timeRange={timeRange} 
+               onTimeRangeChange={setTimeRange} 
+               isLoading={chartLoading} 
+            />
           </div>
 
           {/* About Section */}

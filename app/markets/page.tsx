@@ -8,6 +8,7 @@ import { TrendingUp, TrendingDown, Clock, Shield, Zap, Globe, Activity, ArrowUpR
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
+import Sparkline from "@/components/Sparkline"
 
 export default function MarketsPage() {
   const { data: prices, isLoading, refetch, dataUpdatedAt } = useAllPrices()
@@ -78,6 +79,7 @@ export default function MarketsPage() {
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">Live Price</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">Source</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">24H Change</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">7D_TREND</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-4 text-right text-[10px] font-black text-foreground/40 uppercase tracking-widest">Action</th>
                 </tr>
@@ -113,6 +115,9 @@ export default function MarketsPage() {
                       </td>
                       <td className={cn("px-6 py-5 text-[11px] font-bold tabular-nums", isPositive ? "text-green-500" : "text-red-500")}>
                         {isPositive ? "+" : ""}{randomChange}%
+                      </td>
+                      <td className="px-6 py-5">
+                        <Sparkline symbol={vault.symbol} />
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/20 text-[9px] font-bold text-primary tracking-widest uppercase">

@@ -10,6 +10,7 @@ import { useAccount, useReadContract, useChainId } from "wagmi"
 import { formatUnits } from "viem"
 import { useAllPrices } from "@/hooks/useMarketData"
 import { GM_TOKEN_ADDRESSES, MOCK_PRICES } from "@/lib/ondoOracle"
+import Sparkline from "@/components/Sparkline"
 
 const ERC20_ABI = [
   {
@@ -114,22 +115,13 @@ export default function VaultsPage() {
                   </div>
                 </th>
                 <th className="px-6 py-4">
-                  <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
+                   <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
                     <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">APY</span>
                     <ArrowUpDown className="w-3 h-3 text-foreground/20" />
                   </div>
                 </th>
                 <th className="px-6 py-4">
-                  <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
-                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest text-right">TVL</span>
-                    <ArrowUpDown className="w-3 h-3 text-foreground/20" />
-                  </div>
-                </th>
-                <th className="px-6 py-4">
-                   <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
-                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Balance</span>
-                    <ArrowUpDown className="w-3 h-3 text-foreground/20" />
-                  </div>
+                  <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest text-right">7D_TREND</span>
                 </th>
                 <th className="px-6 py-4 text-right">
                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Action</span>
@@ -207,14 +199,7 @@ function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: b
          </div>
       </td>
       <td className="px-6 py-5 whitespace-nowrap">
-         <span className="text-[11px] font-bold text-foreground/80 tabular-nums tracking-tight">
-            ${(vault.mockTVL / 1000).toFixed(1)}k
-         </span>
-      </td>
-      <td className="px-6 py-5 whitespace-nowrap">
-         <span className="text-[11px] font-bold text-foreground/80 tabular-nums">
-           {parseFloat(formattedBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-         </span>
+         <Sparkline symbol={vault.symbol} />
       </td>
       <td className="px-6 py-5 text-right flex items-center justify-end gap-2">
          <Link href={`/assets/${vault.symbol.toLowerCase()}`}>
