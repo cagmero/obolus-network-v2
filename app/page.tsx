@@ -9,26 +9,33 @@ import { useAccount } from "wagmi"
 import { LandingPage } from "@/components/landing-page"
 import { GM_TOKENS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
+import { usePerformanceData, useRecentTransactions, DEMO_MODE } from "@/hooks/useVaults"
 
 export default function Page() {
   const { address, isConnected } = useAccount()
-
-  // Mock data for the vault context
-  const vaultData = {
-    totalDeposited: "ENCRYPTED",
-    portfolioNav: "$12,450.82",
-    activePositions: "4",
-    performance: 12.4, // percent
-  }
-
-  const { data: txData } = useSWR("/api/transactions", (url) => fetch(url).then(r => r.json()))
+  const { change24h, volatility, alpha } = usePerformanceData()
+  const recentTxns = useRecentTransactions()
 
   if (!isConnected) {
     return <LandingPage />
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono">
+    <div className="flex flex-col gap-6 font-mono">
+      {/* Demo Mode Banner */}
+      {DEMO_MODE && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-center justify-between group">
+           <div className="flex items-center gap-3">
+              <div className="size-2 rounded-full bg-yellow-500 animate-pulse" />
+              <span className="text-yellow-500 text-[10px] font-black uppercase tracking-widest">
+                DEMO_MODE_ACTIVE // VIEWING SAMPLE VAULT STATE // CONNECT WALLET TO USE LIVE DATA
+              </span>
+           </div>
+           <Button variant="ghost" className="h-6 text-[9px] text-yellow-500/60 uppercase font-black hover:bg-yellow-500/10">Dismiss</Button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Main Content */}
       <div className="lg:col-span-8 space-y-6">
         {/* Header */}
@@ -49,23 +56,22 @@ export default function Page() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">Total Deposited</div>
+                  <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">Portfolio NAV</div>
                   <div className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    {vaultData.totalDeposited}
+                    $24,890.00
                   </div>
                 </div>
                 <div>
                   <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">Active Positions</div>
                   <div className="text-2xl font-bold tracking-tight text-foreground">
-                    {vaultData.activePositions}
+                    4
                   </div>
                 </div>
               </div>
               <div className="pt-4">
-                <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">Portfolio NAV</div>
+                <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">Vault Balance</div>
                 <div className="text-5xl font-bold tracking-tight text-foreground">
-                  {vaultData.portfolioNav}
+                  $12,450.00
                 </div>
                 <div className="text-[10px] text-primary uppercase mt-2">
                   System_Status: Operational // fhEVM_Active
@@ -77,17 +83,17 @@ export default function Page() {
             <div className="space-y-4">
               <div className="flex justify-between items-end">
                 <div className="text-[10px] text-foreground/50 uppercase tracking-widest">Portfolio_Performance</div>
-                <div className="text-sm font-bold text-primary">+{vaultData.performance}%</div>
+                <div className="text-sm font-bold text-primary">{change24h}</div>
               </div>
               <div className="h-3 bg-secondary rounded-full overflow-hidden border border-border/20">
                 <div
                   className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] transition-all duration-500"
-                  style={{ width: `${vaultData.performance * 4}%` }}
+                  style={{ width: `75%` }}
                 />
               </div>
               <div className="flex justify-between text-[10px] text-foreground/40 uppercase">
-                <span>Volatility: Low</span>
-                <span>Alpha: 4.2%</span>
+                <span>Volatility: {volatility}</span>
+                <span>Alpha: {alpha}</span>
               </div>
             </div>
           </div>
@@ -179,50 +185,25 @@ export default function Page() {
           </div>
 
           <div className="space-y-6 flex-grow overflow-y-auto">
-            <div className="flex gap-4 group cursor-pointer">
-              <div className="w-0.5 bg-primary/20 group-hover:bg-primary transition-colors" />
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold tracking-wider uppercase text-foreground/90">
-                  VAULT_DEPOSIT_AUTH
+            {recentTxns.map((tx, i) => (
+              <div key={i} className="flex gap-4 group cursor-pointer">
+                <div className={cn(
+                  "w-0.5 transition-colors",
+                  tx.status === 'CONFIRMED' ? "bg-primary/20 group-hover:bg-primary" : "bg-yellow-500/20 group-hover:bg-yellow-500"
+                )} />
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold tracking-wider uppercase text-foreground/90">
+                    {tx.type}
+                  </div>
+                  <div className="text-[11px] text-foreground/50">
+                     Asset: {tx.asset} // Amount: {tx.amount}
+                  </div>
                 </div>
-                <div className="text-[11px] text-foreground/50">
-                   Asset: NVDAon // Amount: ENCRYPTED
-                </div>
-              </div>
-              <div className="ml-auto text-[10px] text-foreground/20 whitespace-nowrap">
-                2M AGO
-              </div>
-            </div>
-
-            <div className="flex gap-4 group cursor-pointer">
-              <div className="w-0.5 bg-primary/20 group-hover:bg-primary transition-colors" />
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold tracking-wider uppercase text-foreground/90">
-                  VAULT_WITHDRAW_AUTH
-                </div>
-                <div className="text-[11px] text-foreground/50">
-                  Asset: TSLAon // Amount: ENCRYPTED
+                <div className="ml-auto text-[10px] text-foreground/20 whitespace-nowrap">
+                  {tx.time}
                 </div>
               </div>
-              <div className="ml-auto text-[10px] text-foreground/20 whitespace-nowrap">
-                1H AGO
-              </div>
-            </div>
-
-            <div className="flex gap-4 group cursor-pointer opacity-50">
-              <div className="w-0.5 bg-primary/20 group-hover:bg-primary transition-colors" />
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold tracking-wider uppercase text-foreground/90">
-                  SHIELDED_TRANSFER
-                </div>
-                <div className="text-[11px] text-foreground/50">
-                  External routing // USDon
-                </div>
-              </div>
-              <div className="ml-auto text-[10px] text-foreground/20 whitespace-nowrap">
-                4H AGO
-              </div>
-            </div>
+            ))}
           </div>
 
           <Link href="/transactions" className="mt-8 text-[10px] text-foreground/40 uppercase hover:text-primary transition-colors flex items-center gap-2 group">
@@ -230,6 +211,7 @@ export default function Page() {
             <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
+      </div>
       </div>
     </div>
   )

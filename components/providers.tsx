@@ -12,12 +12,7 @@ import { WagmiProvider } from 'wagmi'
 import { bsc, bscTestnet } from 'wagmi/chains'
 import { ThemeProvider } from './theme-provider'
 
-const config = getDefaultConfig({
-  appName: 'Obolus Network',
-  projectId: '1745eedb32cb0f103490b50b14761c85',
-  chains: [bsc, bscTestnet],
-  ssr: true, // If your dApp uses server side rendering (SSR)
-})
+import { config } from '@/lib/wagmi'
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient())

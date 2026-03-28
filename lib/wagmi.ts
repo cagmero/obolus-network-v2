@@ -1,7 +1,7 @@
-import { http, createConfig, defineChain } from 'wagmi'
+import { http, createConfig, createStorage, cookieStorage } from 'wagmi'
 import { bsc, bscTestnet } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
-import { parseAbi } from 'viem'
+import { parseAbi, defineChain } from 'viem'
 
 // Custom Zama Devnet Chain
 export const zamaDevnet = defineChain({
@@ -19,6 +19,9 @@ export const config = createConfig({
     injected(),
   ],
   ssr: true,
+  storage: createStorage({
+    storage: cookieStorage
+  }),
   transports: {
     [zamaDevnet.id]: http(),
     [bsc.id]: http(),
