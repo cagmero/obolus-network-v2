@@ -1,200 +1,250 @@
 "use client"
 
-import { motion } from "framer-motion"
-import { Shield, Lock, Globe, Zap, AlertTriangle, ArrowRight, Activity } from "lucide-react"
+import { useState } from "react"
+import { ConnectGate } from "@/components/connect-gate"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { useVaults } from "@/hooks/useVaults"
-
-import CCIPVisualizer from "@/components/ccip-visualizer"
-
-import { useAccount, useReadContract } from "wagmi"
-import { creditManagerAbi } from "@/generated"
-import { CONTRACT_ADDRESSES, MASTER_CHAIN_ID } from "@/lib/constants"
+import { Input } from "@/components/ui/input"
+import { Lock, Eye, EyeOff, Shield, RefreshCw, ChevronRight, ArrowDownLeft, Zap } from "lucide-react"
+import { GM_TOKENS } from "@/lib/constants"
+import { useAccount, useChainId } from "wagmi"
+import { useVaultBalance, useDeposit, useWithdraw, useGMTokenPrices } from "@/hooks/useVaults"
 import { formatUnits } from "viem"
 
 export default function VaultPage() {
-  const { address } = useAccount()
+  const { address, isConnected } = useAccount()
+  const chainId = useChainId()
+  const [revealed, setRevealed] = useState(false)
+  const [selectedTokens, setSelectedTokens] = useState<string[]>([])
+  const [amount, setAmount] = useState<string>("")
+  const [withdrawAmount, setWithdrawAmount] = useState<string>("")
 
-  const { data: totalCollateralRaw } = useReadContract({
-    address: CONTRACT_ADDRESSES[MASTER_CHAIN_ID].CREDIT_MANAGER as `0x${string}`,
-    abi: creditManagerAbi,
-    functionName: "s_userTotalCollateralUSD",
-    args: [address!],
-    query: { enabled: !!address }
-  })
+  const { data: balance, isLoading: balanceLoading } = useVaultBalance(address)
+  const { data: prices } = useGMTokenPrices()
+  const { execute: depositGM } = useDeposit()
+  const { execute: withdrawGM } = useWithdraw()
 
-  const { data: creditLimitRaw } = useReadContract({
-    address: CONTRACT_ADDRESSES[MASTER_CHAIN_ID].CREDIT_MANAGER as `0x${string}`,
-    abi: creditManagerAbi,
-    functionName: "getCreditLimit",
-    args: [address!],
-    query: { enabled: !!address }
-  })
+  const [txStatus, setTxStatus] = useState<string>("IDLE")
 
-  const { vaults, loading: vaultsLoading } = useVaults()
+  const toggleToken = (symbol: string) => {
+    // Single selection for V1 simplified flow
+    setSelectedTokens([symbol])
+  }
 
-  const totalCollateral = totalCollateralRaw ? Number(formatUnits(totalCollateralRaw as bigint, 18)) : 0
-  const creditLimit = creditLimitRaw ? Number(formatUnits(creditLimitRaw as bigint, 18)) : 0
+  const handleDeposit = async () => {
+    if (!selectedTokens[0] || !amount) return
+    setTxStatus("PENDING")
+    try {
+      const token = Object.values(GM_TOKENS).find(t => t.symbol === selectedTokens[0])
+      if (token) {
+        await depositGM(token.address as `0x${string}`, amount)
+        setTxStatus("SUCCESS")
+      }
+    } catch (e) {
+      console.error(e)
+      setTxStatus("ERROR")
+    }
+  }
 
-  const CHAIN_MAP: Record<number, string> = {
-    43113: "Avalanche Fuji",
-    80002: "Polygon Amoy",
-    11155111: "Ethereum Sepolia",
-    84532: "Base Sepolia"
+  const handleWithdraw = async () => {
+    if (!selectedTokens[0] || !withdrawAmount) return
+    setTxStatus("PENDING")
+    try {
+      const token = Object.values(GM_TOKENS).find(t => t.symbol === selectedTokens[0])
+      if (token) {
+        await withdrawGM(token.address as `0x${string}`, withdrawAmount)
+        setTxStatus("SUCCESS")
+      }
+    } catch (e) {
+      console.error(e)
+      setTxStatus("ERROR")
+    }
   }
 
   return (
-    <div className="min-h-screen bg-background font-mono">
-      <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-        <header className="mb-16">
-          <div className="flex items-center gap-3 mb-4 text-primary">
-            <Shield className="w-5 h-5" />
-            <span className="text-xs font-bold tracking-[0.3em] uppercase">Cross-Chain Vault</span>
-          </div>
-          <h1 className="text-5xl font-black tracking-tighter mb-6">
-            Shielded Collateral <br /> Powered by CCIP
-          </h1>
-          <p className="text-foreground/50 max-w-2xl leading-relaxed">
-            uses Chainlink CCIP to link lending pools across Ethereum, Polygon, and Base.
-            Your credit limit is calculated on Avalanche (Master Chain) while your assets stay in
-            sovereign satellite vaults.
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-20">
-          <div className="lg:col-span-2 space-y-8">
-            {/* Master Chain Status */}
-            <div className="bg-card/20 border border-border/40 rounded-3xl p-8 backdrop-blur-sm">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <Globe className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold">Master Control (Avalanche)</h3>
-                    <p className="text-[10px] text-foreground/40 uppercase">Credit Manager & Debt Registry</p>
-                  </div>
-                </div>
-                <div className="px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-500 text-[10px] font-bold">
-                  SYNC_SUCCESS
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div className="space-y-6">
-                  <div>
-                    <div className="text-[10px] text-foreground/40 uppercase tracking-widest mb-1">Total_Collateral_Value</div>
-                    <div className="text-3xl font-bold">${totalCollateral.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-foreground/40 uppercase tracking-widest mb-1">Aggregated_Credit_Limit</div>
-                    <div className="text-3xl font-bold text-primary">${creditLimit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                  </div>
-                </div>
-                <div className="bg-background/40 border border-border/20 rounded-2xl p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <AlertTriangle className="w-4 h-4 text-amber-500" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Health Factor</span>
-                  </div>
-                  <div className="text-4xl font-bold mb-2 text-emerald-500">2.14</div>
-                  <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 w-[70%]" />
-                  </div>
-                  <p className="text-[9px] text-foreground/30 mt-3 uppercase leading-tight">
-                    Liquidation threshold: 1.15 // Your position is highly secure across all 4 linked chains.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* CCIP Visualizer integrated here */}
-            <CCIPVisualizer />
-          </div>
-
-          {/* Quick Stats Sidebar */}
-          <div className="space-y-8">
-            <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 relative overflow-hidden">
-              <Zap className="absolute -top-6 -right-6 w-32 h-32 text-primary/5 rotate-12" />
-              <h3 className="text-lg font-bold mb-6 relative z-10">Cross-Chain Activity</h3>
-              <div className="space-y-6 relative z-10">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-foreground/50">Active Bridges</span>
-                  <span className="text-xs font-bold font-mono">{vaults.length}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-foreground/50">Avg Sync Latency</span>
-                  <span className="text-xs font-bold font-mono">~180s</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-foreground/50">Relay Fees (MTD)</span>
-                  <span className="text-xs font-bold font-mono">0.42 LINK</span>
-                </div>
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold mt-4">
-                  SYNC_NOW
-                </Button>
-              </div>
-            </div>
-
-            {/* Added a real-time terminal feel block */}
-            <div className="bg-black/40 border border-border/40 rounded-3xl p-6 font-mono">
-              <div className="flex items-center gap-2 mb-4 text-[10px] font-bold text-foreground/30">
-                <Activity className="w-3 h-3" />
-                RAW_EVENT_LOG
-              </div>
-              <div className="space-y-2 text-[9px] text-primary/60">
-                <div>[08:14:02] Master: Received Credit_Update from Chain 101</div>
-                <div>[08:13:58] Satellite: commit_checkpoint Polygon_Vault</div>
-                <div>[08:12:45] Master: Recalculating user_tvl 0x71...49f</div>
-                <div className="animate-pulse">_</div>
-              </div>
-            </div>
+    <ConnectGate>
+      <div className="flex flex-col gap-6 py-8 font-mono">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold tracking-[0.2em] text-foreground/50 uppercase">
+            VAULT // DEPOSIT_WITHDRAW
+          </h2>
+          <div className="flex items-center gap-2 px-2 py-0.5 rounded border border-primary/30 bg-primary/5 text-[10px] text-primary font-bold tracking-wider uppercase">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            SECURE_VAULT_V1 // {chainId === 97 ? "BSC_TESTNET" : chainId === 56 ? "BSC_MAINNET" : "UNKNOWN_CHAIN"}
           </div>
         </div>
 
-        {/* Linked Vaults */}
-        <section>
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold tracking-tight">Linked Satellite Vaults</h2>
-            <div className="flex gap-4">
-              <Link href="/vault/bridge">
-                <Button className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs gap-2 px-6">
-                  <span>BRIDGE_COLLATERAL</span>
-                  <ArrowRight className="w-3 h-3" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Panel: Deposit/Withdraw */}
+          <div className="lg:col-span-7 space-y-8 text-sm">
+            {/* Deposit Section */}
+            <div className="bg-card/20 border border-border/40 rounded-2xl p-6 backdrop-blur-md space-y-6">
+              <div className="space-y-4">
+                <div className="text-[10px] text-foreground/50 uppercase tracking-widest font-bold">Select Active Asset</div>
+                <div className="grid gap-3">
+                  {Object.entries(GM_TOKENS).map(([key, token]) => (
+                    <div 
+                      key={key}
+                      onClick={() => toggleToken(token.symbol)}
+                      className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
+                        selectedTokens.includes(token.symbol) 
+                          ? "bg-primary/10 border-primary/40" 
+                          : "bg-background/40 border-border/20 hover:border-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                          selectedTokens.includes(token.symbol) ? "bg-primary border-primary" : "border-white/20"
+                        }`}>
+                          {selectedTokens.includes(token.symbol) && <div className="w-2 h-2 bg-black rounded-sm" />}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: token.color }} />
+                          <span className="font-bold tracking-tight">{token.symbol}</span>
+                          <span className="text-[10px] text-foreground/40 font-bold">{token.name}</span>
+                        </div>
+                      </div>
+                      <div className="font-bold text-foreground/70">
+                        ${formatUnits(prices[token.symbol] || 0n, 18)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="text-[10px] text-foreground/50 uppercase tracking-widest font-bold">DEPOSIT_AMOUNT</div>
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    placeholder="0.00" 
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="bg-background/60 border-border/30 h-14 pl-4 pr-12 text-lg font-bold"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/20 uppercase">Units</div>
+                </div>
+                <Button 
+                  onClick={handleDeposit}
+                  disabled={txStatus === "PENDING" || !amount}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black py-7 rounded-xl flex items-center justify-center gap-3 uppercase tracking-widest"
+                >
+                  <Zap className="w-5 h-5 fill-current" />
+                  <span>{txStatus === "PENDING" ? "EXECUTING..." : "DEPOSIT_ASSETS"}</span>
                 </Button>
-              </Link>
-              <Button variant="outline" className="rounded-full border-border/40 text-xs gap-2">
-                <Link href="/vault/link" className="flex items-center gap-2">
-                  <span>ADD_NEW_CHAIN</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </Button>
+                {txStatus === "SUCCESS" && <div className="text-[10px] text-primary font-bold text-center uppercase tracking-widest">Transaction_Success // Shielded_Ledger_Update</div>}
+                {txStatus === "ERROR" && <div className="text-[10px] text-red-500 font-bold text-center uppercase tracking-widest">Transaction_Error // Check_Permissions</div>}
+              </div>
+            </div>
+
+            {/* Withdraw Section */}
+            <div className="bg-card/20 border border-border/40 rounded-2xl p-6 backdrop-blur-md space-y-6">
+              <div className="text-[10px] text-foreground/50 uppercase tracking-widest font-bold">WITHDRAW // SETTLE_POSITION</div>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    placeholder="0.00" 
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="bg-background/60 border-border/30 h-14 pl-4 pr-12 text-lg font-bold"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/20 uppercase">Shares</div>
+                </div>
+                <Button 
+                  onClick={handleWithdraw}
+                  disabled={txStatus === "PENDING" || !withdrawAmount}
+                  variant="outline" className="w-full border-primary/20 hover:bg-primary/5 text-primary font-black py-7 rounded-xl flex items-center justify-center gap-3 uppercase tracking-widest"
+                >
+                  <ArrowDownLeft className="w-5 h-5" />
+                  <span>{txStatus === "PENDING" ? "EXECUTING..." : "WITHDRAW_FROM_VAULT"}</span>
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {vaultsLoading ? (
-              <div className="col-span-full py-20 text-center text-foreground/30 text-xs uppercase tracking-widest animate-pulse">
-                Synthesizing_Vault_Data...
-              </div>
-            ) : vaults.map((v, i) => (
-              <div key={i} className="bg-card/10 border border-border/30 rounded-2xl p-6 hover:border-primary/40 transition-colors group">
-                <div className="flex justify-between items-start mb-6">
-                  <div className={`text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500`}>
-                    SYNCED
-                  </div>
-                  <Lock className="w-4 h-4 text-foreground/20 group-hover:text-primary transition-colors" />
+          {/* Right Panel: Status/Shares */}
+          <div className="lg:col-span-5 space-y-6">
+             {/* Vault Status */}
+             <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 space-y-4">
+               <h3 className="text-xs font-bold tracking-widest text-primary uppercase flex items-center gap-2">
+                 <Shield className="w-4 h-4" />
+                 VAULT_STATUS
+               </h3>
+               <div className="space-y-3">
+                 <div className="flex justify-between items-center py-2 border-b border-white/5">
+                   <span className="text-[10px] text-white/40 uppercase">Encryption_Status</span>
+                   <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">ACTIVE</span>
+                 </div>
+                 <div className="flex justify-between items-center py-2 border-b border-white/5">
+                   <span className="text-[10px] text-white/40 uppercase">Connection</span>
+                   <span className="text-[10px] font-bold text-white/80 uppercase">
+                     {isConnected ? `0X...${address?.slice(-4)}` : "DISCONNECTED"}
+                   </span>
+                 </div>
+                 <div className="flex justify-between items-center py-2">
+                   <span className="text-[10px] text-white/40 uppercase">Protocol_Version</span>
+                   <span className="text-[10px] font-bold text-white/80 uppercase">fhEVM_V1_STABLE</span>
+                 </div>
+               </div>
+             </div>
+
+             {/* Your Shares */}
+             <div className="bg-card/20 border border-border/40 rounded-2xl p-8 space-y-6 text-center">
+                <div className="text-[10px] text-foreground/50 uppercase tracking-widest font-bold mb-4">YOUR_VAULT_SHARES</div>
+                <div className="flex flex-col items-center gap-4">
+                  {revealed ? (
+                    <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
+                      {formatUnits(balance || 0n, 18)}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-2 bg-primary/10 border border-primary/20 rounded-lg text-primary text-xs font-bold tracking-[0.3em] flex items-center gap-3 uppercase">
+                      <Lock className="w-4 h-4" />
+                      ENCRYPTED
+                    </div>
+                  )}
+                  <Button 
+                    onClick={() => setRevealed(!revealed)}
+                    className="bg-secondary hover:bg-secondary/80 text-foreground font-bold px-6 py-2 rounded-full flex items-center gap-2 text-[10px] uppercase tracking-widest"
+                  >
+                    {revealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    {revealed ? "HIDE_BALANCE" : "REVEAL_BALANCE"}
+                  </Button>
                 </div>
-                <div className="text-[10px] text-foreground/40 uppercase mb-1">{CHAIN_MAP[v.chain_id] || "Unknown Chain"}</div>
-                <div className="text-xl font-bold mb-4">{v.total_assets.toLocaleString()} {v.asset_symbol}</div>
-                <div className="text-sm font-mono text-foreground/60">${(v.total_assets * 1).toLocaleString()}</div> {/* Placeholder USD math */}
-              </div>
-            ))}
+             </div>
+
+             {/* Activity Stream */}
+             <div className="bg-card/20 border border-border/40 rounded-2xl p-6 space-y-6">
+                <div className="text-[10px] text-foreground/50 uppercase tracking-widest font-bold">RECENT_VAULT_EVENTS</div>
+                <div className="space-y-6">
+                   {[
+                     { type: "VAULT_DEPOSIT", asset: "NVDAon", time: "2M AGO" },
+                     { type: "VAULT_WITHDRAW", asset: "TSLAon", time: "1H AGO" },
+                     { type: "BALANCE_REVEAL", asset: "SYS_CALL", time: "4H AGO" },
+                   ].map((event, i) => (
+                     <div key={i} className="flex gap-4 group cursor-pointer">
+                        <div className="w-0.5 bg-primary/20 group-hover:bg-primary transition-colors" />
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-bold tracking-wider uppercase text-foreground/90">
+                            {event.type}
+                          </div>
+                          <div className="text-[11px] text-foreground/50 uppercase">
+                            Asset: {event.asset} // ENCRYPTED
+                          </div>
+                        </div>
+                        <div className="ml-auto text-[10px] text-foreground/20 whitespace-nowrap">
+                          {event.time}
+                        </div>
+                     </div>
+                   ))}
+                </div>
+                <a href="/transactions" className="block mt-6 text-[10px] text-foreground/40 uppercase hover:text-primary transition-colors flex items-center gap-2 group">
+                  View Full Event Log
+                  <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                </a>
+             </div>
           </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      </div>
+    </ConnectGate>
   )
 }
-
-

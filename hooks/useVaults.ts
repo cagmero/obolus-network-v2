@@ -1,39 +1,127 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+"use client"
 
-export interface Vault {
-    id: string
-    chain_id: number
-    address: string
-    asset_address: string
-    asset_symbol: string
-    total_assets: number
-    created_at: string
+import { useReadContract, useWriteContract, useAccount } from 'wagmi'
+import { OBOLUS_CONTRACTS } from '@/lib/wagmi'
+import { GM_TOKENS } from '@/lib/constants'
+import { parseUnits, parseAbi } from 'viem'
+
+// Generic ERC20 ABI for Approval
+const ERC20_ABI = parseAbi([
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)"
+])
+
+/**
+ * Get user's vault share balance
+ */
+export function useVaultBalance(userAddress?: `0x${string}`) {
+  return useReadContract({
+    ...OBOLUS_CONTRACTS.RWAVault,
+    functionName: 'balanceOf',
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: !!userAddress }
+  })
 }
 
-export function useVaults() {
-    const [vaults, setVaults] = useState<Vault[]>([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<any>(null)
+/**
+ * Get user's individual GM token positions
+ */
+export function usePortfolioPositions(userAddress?: `0x${string}`) {
+  // Obolus V1 doesn't have an easily enumerable list in PositionManager
+  // We'll call for each known GM token from constants
+  const results = Object.entries(GM_TOKENS).map(([key, token]) => {
+    return useReadContract({
+      ...OBOLUS_CONTRACTS.PositionManager,
+      functionName: 'getPosition',
+      args: userAddress ? [userAddress, token.address as `0x${string}`] : undefined,
+      query: { enabled: !!userAddress }
+    })
+  })
 
-    useEffect(() => {
-        async function fetchVaults() {
-            try {
-                const { data, error } = await supabase
-                    .from('vaults')
-                    .select('*')
+  const loading = results.some(r => r.isLoading)
+  const data = Object.keys(GM_TOKENS).reduce((acc, symbol, i) => {
+    acc[symbol] = results[i].data as bigint || 0n
+    return acc
+  }, {} as Record<string, bigint>)
 
-                if (error) throw error
-                setVaults(data || [])
-            } catch (e) {
-                setError(e)
-            } finally {
-                setLoading(false)
-            }
-        }
+  return { data, loading }
+}
 
-        fetchVaults()
-    }, [])
+/**
+ * Execute a Deposit Flow: Approve -> Deposit
+ */
+export function useDeposit() {
+  const { writeContractAsync: approve } = useWriteContract()
+  const { writeContractAsync: deposit } = useWriteContract()
 
-    return { vaults, loading, error }
+  const execute = async (tokenAddress: `0x${string}`, amount: string) => {
+    const units = parseUnits(amount, 18)
+    
+    // 1. Approve
+    await approve({
+      address: tokenAddress,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [OBOLUS_CONTRACTS.RWAVault.address, units],
+    })
+
+    // 2. Deposit
+    return deposit({
+      ...OBOLUS_CONTRACTS.RWAVault,
+      functionName: 'depositGM',
+      args: [tokenAddress, units],
+    })
+  }
+
+  return { execute }
+}
+
+/**
+ * Execute a Withdraw Flow
+ */
+export function useWithdraw() {
+  const { writeContractAsync: withdraw } = useWriteContract()
+
+  const execute = async (tokenAddress: `0x${string}`, shares: string) => {
+    return withdraw({
+      ...OBOLUS_CONTRACTS.RWAVault,
+      functionName: 'withdrawGM',
+      args: [tokenAddress, parseUnits(shares, 18)],
+    })
+  }
+
+  return { execute }
+}
+
+/**
+ * Get latest GM token prices from ObolusOracle
+ */
+export function useGMTokenPrices() {
+  const results = Object.entries(GM_TOKENS).map(([key, token]) => {
+    return useReadContract({
+      ...OBOLUS_CONTRACTS.ObolusOracle,
+      functionName: 'getGMTokenPrice',
+      args: [token.address as `0x${string}`],
+    })
+  })
+
+  const data = Object.keys(GM_TOKENS).reduce((acc, symbol, i) => {
+    acc[symbol] = results[i].data as bigint || 0n
+    return acc
+  }, {} as Record<string, bigint>)
+
+  return { data, results }
+}
+
+/**
+ * Get portfolio NAV across all tokens
+ */
+export function usePortfolioNAV(userAddress?: `0x${string}`) {
+  // For V1 placeholder, we return total vault assets for now 
+  // as users don't have individual NAV calc in oracle yet
+  return useReadContract({
+    ...OBOLUS_CONTRACTS.RWAVault,
+    functionName: 'totalAssets',
+    query: { enabled: true }
+  })
 }

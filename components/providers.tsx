@@ -9,14 +9,13 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { WagmiProvider } from 'wagmi'
-import { avalancheFuji, polygonAmoy } from 'wagmi/chains'
-import { monadTestnet } from '@/lib/wagmi'
+import { bsc, bscTestnet } from 'wagmi/chains'
 import { ThemeProvider } from './theme-provider'
 
 const config = getDefaultConfig({
   appName: 'Obolus Network',
   projectId: '1745eedb32cb0f103490b50b14761c85',
-  chains: [monadTestnet, avalancheFuji, polygonAmoy],
+  chains: [bsc, bscTestnet],
   ssr: true, // If your dApp uses server side rendering (SSR)
 })
 

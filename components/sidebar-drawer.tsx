@@ -20,10 +20,10 @@ import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
   { href: "/", label: "DASHBOARD", icon: LayoutDashboard },
-  { href: "/pools", label: "PIGGY BANK", icon: PiggyBank },
-  { href: "/merchants", label: "SHOP", icon: ShoppingBag },
-  { href: "/limits", label: "LIMITS", icon: Gauge },
-  { href: "/docs", label: "DOCS", icon: FileText },
+  { href: "/vault", label: "VAULT", icon: PiggyBank },
+  { href: "/portfolio", label: "PORTFOLIO", icon: User },
+  { href: "/markets", label: "MARKETS", icon: Gauge },
+  { href: "/privacy", label: "PRIVACY", icon: FileText },
   { href: "/transactions", label: "TRANSACTIONS", icon: History },
 ]
 

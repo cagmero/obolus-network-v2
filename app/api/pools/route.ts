@@ -1,53 +1,40 @@
-import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { NextResponse } from "next/server"
 
 export async function GET() {
-    try {
-        if (!supabaseUrl || !supabaseAnonKey) {
-            console.warn("Supabase env vars missing, returning mock data");
-            return NextResponse.json([
-                {
-                    id: 1,
-                    chain_name: 'Monad Testnet',
-                    asset_symbol: 'MON',
-                    tvl: '1240200',
-                    apy: '12.4',
-                    pool_type: 'MASTER',
-                    contract_address: '0x1234...5678',
-                    is_live: true
-                },
-                {
-                    id: 2,
-                    chain_name: 'Avalanche Fuji',
-                    asset_symbol: 'AVAX',
-                    tvl: '850000',
-                    apy: '8.2',
-                    pool_type: 'SATELLITE',
-                    contract_address: '0xabcd...efgh',
-                    is_live: true
-                }
-            ]);
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
-        const { data: pools, error } = await supabase
-            .from('pools')
-            .select('*')
-            .order('pool_type', { ascending: false })
-
-        if (error) throw error
-
-        const result = (pools || []).map(pool => ({
-            ...pool,
-            is_live: !!pool.contract_address && !pool.contract_address.startsWith('0x0000')
-        }));
-
-        return NextResponse.json(result)
-    } catch (error: any) {
-        console.error("Pools API error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 })
+  const pools = [
+    {
+      id: "pool_1",
+      asset: "TSLAon",
+      underlying: "Tesla (TSLA)",
+      tvl: "$4,250,820",
+      apy: "Stock Appreciation",
+      status: "ACTIVE"
+    },
+    {
+      id: "pool_2",
+      asset: "NVDAon",
+      underlying: "Nvidia (NVDA)",
+      tvl: "$12,890,500",
+      apy: "Stock Appreciation",
+      status: "ACTIVE"
+    },
+    {
+      id: "pool_3",
+      asset: "SPYon",
+      underlying: "S&P 500 (SPY)",
+      tvl: "$52,512,800",
+      apy: "Market Index",
+      status: "ACTIVE"
+    },
+    {
+      id: "pool_4",
+      asset: "QQQon",
+      underlying: "Nasdaq 100 (QQQ)",
+      tvl: "$34,432,100",
+      apy: "Market Index",
+      status: "ACTIVE"
     }
+  ]
+
+  return NextResponse.json({ pools })
 }

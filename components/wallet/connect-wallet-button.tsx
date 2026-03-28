@@ -2,6 +2,7 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from "@/components/ui/button"
+import { AlertTriangle, ShieldCheck } from "lucide-react"
 
 export function ConnectWalletButton() {
   return (
@@ -21,11 +22,7 @@ export function ConnectWalletButton() {
           <div
             {...(!ready && {
               'aria-hidden': true,
-              'style': {
-                opacity: 0,
-                pointerEvents: 'none',
-                userSelect: 'none',
-              },
+              'className': 'opacity-0 pointer-events-none user-select-none',
             })}
           >
             {(() => {
@@ -33,9 +30,9 @@ export function ConnectWalletButton() {
                 return (
                   <Button
                     onClick={openConnectModal}
-                    className="bg-primary hover:bg-primary/90 text-black rounded-full font-mono font-bold relative z-50 px-6 py-2 h-auto min-w-[140px]"
+                    className="bg-primary hover:bg-primary/90 text-black rounded-xl font-mono font-black relative z-50 px-6 py-2 h-10 min-w-[140px] uppercase tracking-widest text-[10px]"
                   >
-                    Connect Wallet
+                    CONNECT_WALLET
                   </Button>
                 )
               }
@@ -45,47 +42,30 @@ export function ConnectWalletButton() {
                   <Button
                     onClick={openChainModal}
                     variant="destructive"
-                    className="rounded-full font-mono font-bold relative z-50 px-6 py-2 h-auto"
+                    className="rounded-xl font-mono font-black relative z-50 px-4 py-2 h-10 flex items-center gap-2 uppercase tracking-widest text-[9px] animate-pulse"
                   >
-                    Wrong network
+                    <AlertTriangle className="size-4" />
+                    WRONG_NETWORK // SWITCH_TO_BSC
                   </Button>
                 )
               }
 
               return (
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div className="flex gap-3">
                   <Button
                     onClick={openChainModal}
-                    variant="outline"
-                    className="hidden sm:flex items-center gap-2 rounded-full border-primary/20 text-xs py-1 h-auto"
+                    variant="secondary"
+                    className="hidden sm:flex items-center gap-2 rounded-xl border border-white/5 bg-white/5 text-[9px] font-black py-2 h-10 uppercase tracking-widest"
                   >
-                    {chain.hasIcon && (
-                      <div
-                        style={{
-                          background: chain.iconBackground,
-                          width: 12,
-                          height: 12,
-                          borderRadius: 999,
-                          overflow: 'hidden',
-                          marginRight: 4,
-                        }}
-                      >
-                        {chain.iconUrl && (
-                          <img
-                            alt={chain.name ?? 'Chain icon'}
-                            src={chain.iconUrl}
-                            style={{ width: 12, height: 12 }}
-                          />
-                        )}
-                      </div>
-                    )}
-                    {chain.name}
+                    <div className="size-2 rounded-full bg-primary animate-pulse" />
+                    {chain.name?.replace(" ", "_").toUpperCase()}
                   </Button>
 
                   <Button
                     onClick={openAccountModal}
-                    className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-full font-mono font-bold text-xs py-1 h-auto px-4"
+                    className="bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 rounded-xl font-mono font-black text-[10px] py-2 h-10 px-4 uppercase tracking-widest flex items-center gap-2"
                   >
+                    <ShieldCheck className="size-3" />
                     {account.displayName}
                   </Button>
                 </div>
