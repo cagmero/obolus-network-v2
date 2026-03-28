@@ -5,9 +5,11 @@ import { OBOLUS_CONTRACTS } from '@/lib/wagmi'
 import { GM_TOKENS } from '@/lib/constants'
 import { parseUnits, parseAbi, formatUnits } from 'viem'
 import { useState } from 'react'
-import { BSC_TESTNET_CHAIN_ID } from '@/lib/constants'
+import { encryptAmount, encryptPosition } from '@/lib/encryption'
+import { ethers } from 'ethers'
 
 export const DEMO_MODE = true
+const SERVER_URL = "http://localhost:3001"
 
 // Generic ERC20 ABI for Approval
 const ERC20_ABI = parseAbi([
@@ -16,87 +18,90 @@ const ERC20_ABI = parseAbi([
 ])
 
 /**
- * Get user's vault share balance (Encrypted Handle)
+ * Submit encrypted initial positions to Obolus Server.
  */
-export function useVaultBalance(userAddress?: `0x${string}`) {
-  const result = useReadContract({
-    ...OBOLUS_CONTRACTS.RWAVault,
-    functionName: 'balanceOf',
-    args: userAddress ? [userAddress] : undefined,
-    query: { enabled: !!userAddress }
-  })
+export function useEncryptedSubmit() {
+  const { address } = useAccount()
 
-  if (DEMO_MODE) {
-    return { ...result, data: BigInt("12450000000000000000000") }
-  }
+  const execute = async (positions: Record<string, string>) => {
+    if (!address) throw new Error("WALLET_NOT_CONNECTED")
+    
+    // 1. Encrypt positions for CRE
+    const encryptedPositions = await encryptPosition(positions)
+    const encryptedNAV = await encryptAmount("0") // Initial NAV
 
-  return result
-}
+    // 2. Prepare EIP-712 Signature (Simplified for demo, real uses signTypedData)
+    const nonce = Math.random().toString(36).substring(7)
+    const timestamp = Math.floor(Date.now() / 1000)
+    
+    // In a real app, we'd call signer.signTypedData 
+    const signature = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
-/**
- * Reveal Balance Hook (Decryption)
- */
-export function useDecryptBalance(userAddress?: `0x${string}`) {
-  const { data: decryptedRaw, refetch, isLoading, isError } = useReadContract({
-    ...OBOLUS_CONTRACTS.RWAVault,
-    functionName: 'decryptBalance',
-    args: userAddress ? [userAddress] : undefined,
-    query: { enabled: false } // Triggered manually
-  })
-
-  const reveal = () => refetch()
-
-  // Formatted decrypted balance
-  let balance = decryptedRaw ? formatUnits(decryptedRaw as bigint, 18) : "0"
-  
-  if (DEMO_MODE) {
-    balance = "12,450.00"
-  }
-
-  return { balance, reveal, isLoading, isError, hasData: DEMO_MODE ? true : !!decryptedRaw }
-}
-
-/**
- * Get user's individual GM token positions (Encrypted)
- */
-export function usePortfolioPositions(userAddress?: `0x${string}`) {
-  const results = Object.entries(GM_TOKENS).map(([key, token]) => {
-    return useReadContract({
-      ...OBOLUS_CONTRACTS.PositionManager,
-      functionName: 'getPosition',
-      args: userAddress ? [userAddress, token.address as `0x${string}`] : undefined,
-      query: { enabled: !!userAddress }
+    // 3. Post to Obolus Server
+    const res = await fetch(`${SERVER_URL}/api/v1/position/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: address,
+        encryptedPositions,
+        encryptedNAV,
+        publicKey: "0x0000000000000000000000000000000000000000000000000000000000000000",
+        nonce,
+        signature,
+        timestamp
+      })
     })
-  })
 
-  const loading = results.some(r => r.isLoading)
-  
-  if (DEMO_MODE) {
-    const mockData = {
-      TSLAon: parseUnits("12.4", 18),
-      NVDAon: parseUnits("8.2", 18),
-      SPYon: parseUnits("5.1", 18),
-      QQQon: parseUnits("3.7", 18)
-    }
-    return { data: mockData, loading: false }
+    return res.json()
   }
 
-  const data = Object.keys(GM_TOKENS).reduce((acc, symbol, i) => {
-    acc[symbol] = results[i].data as bigint || BigInt(0)
-    return acc
-  }, {} as Record<string, bigint>)
-
-  return { data, loading }
+  return { execute }
 }
 
 /**
- * Execute a Deposit Flow: Approve -> Deposit
+ * Reveal Position (TODO: CRE Decryption Flow)
  */
-export function useDeposit() {
+export function useRevealPosition() {
+  const { address } = useAccount()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  const reveal = async () => {
+    if (!address) return
+    setLoading(true)
+    
+    // Fetch encrypted blob from server
+    const res = await fetch(`${SERVER_URL}/api/v1/position/${address}`)
+    const json = await res.json()
+    
+    // TODO: Real decryption requires CRE callback flow or user private key access
+    // For now, return mock decrypted data if in DEMO_MODE
+    if (DEMO_MODE) {
+       setData({
+         TSLAon: "12.4",
+         NVDAon: "8.2",
+         SPYon: "5.1",
+         QQQon: "3.7"
+       })
+    } else {
+       setData(json)
+    }
+    setLoading(false)
+  }
+
+  return { data, reveal, loading }
+}
+
+/**
+ * Execute a Deposit Flow: Approve -> Deposit -> Submit Intent
+ */
+export function useVaultDeposit() {
+  const { address } = useAccount()
   const { writeContractAsync: approve } = useWriteContract()
   const { writeContractAsync: deposit } = useWriteContract()
 
   const execute = async (tokenAddress: `0x${string}`, amount: string) => {
+    if (!address) throw new Error("WALLET_NOT_CONNECTED")
     const units = parseUnits(amount, 18)
     
     // 1. Approve
@@ -107,12 +112,33 @@ export function useDeposit() {
       args: [OBOLUS_CONTRACTS.RWAVault.address, units],
     })
 
-    // 2. Deposit (Plaintext amount, internal encryption in contract)
-    return deposit({
+    // 2. Deposit on-chain (public tx)
+    const tx = await deposit({
       ...OBOLUS_CONTRACTS.RWAVault,
-      functionName: 'depositGM',
+      functionName: 'deposit', // Updated from depositGM
       args: [tokenAddress, units],
     })
+
+    // 3. Submit Encrypted Intent to Obolus Server for CRE matching
+    const encryptedAmount = await encryptAmount(amount)
+    const nonce = Math.random().toString(36).substring(7)
+    const timestamp = Math.floor(Date.now() / 1000)
+
+    await fetch(`${SERVER_URL}/api/v1/intent/deposit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: address,
+        token: tokenAddress,
+        encryptedAmount,
+        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+        nonce,
+        signature: "0x0000",
+        timestamp
+      })
+    })
+
+    return tx
   }
 
   return { execute }
@@ -121,78 +147,52 @@ export function useDeposit() {
 /**
  * Execute a Withdraw Flow
  */
-export function useWithdraw() {
+export function useVaultWithdraw() {
+  const { address } = useAccount()
   const { writeContractAsync: withdraw } = useWriteContract()
 
   const execute = async (tokenAddress: `0x${string}`, shares: string) => {
-    return withdraw({
+    if (!address) throw new Error("WALLET_NOT_CONNECTED")
+    const units = parseUnits(shares, 18)
+
+    // 1. Withdraw on-chain
+    const tx = await withdraw({
       ...OBOLUS_CONTRACTS.RWAVault,
-      functionName: 'withdrawGM',
-      args: [tokenAddress, parseUnits(shares, 18)],
+      functionName: 'withdraw', // Updated from withdrawGM
+      args: [tokenAddress, units],
     })
+
+    // 2. Submit Encrypted Intent
+    const encryptedAmount = await encryptAmount(shares)
+    const nonce = Math.random().toString(36).substring(7)
+    const timestamp = Math.floor(Date.now() / 1000)
+
+    await fetch(`${SERVER_URL}/api/v1/intent/withdraw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: address,
+        token: tokenAddress,
+        encryptedAmount,
+        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+        nonce,
+        signature: "0x0000",
+        timestamp
+      })
+    })
+
+    return tx
   }
 
   return { execute }
 }
 
-/**
- * Get latest GM token prices from ObolusOracle
- */
-export function useGMTokenPrices() {
-  const results = Object.entries(GM_TOKENS).map(([key, token]) => {
-    return useReadContract({
-      ...OBOLUS_CONTRACTS.ObolusOracle,
-      functionName: 'getGMTokenPrice',
-      args: [token.address as `0x${string}`],
-    })
-  })
-
-  const loading = results.some(r => r.isLoading)
-  const data = Object.keys(GM_TOKENS).reduce((acc, symbol, i) => {
-    acc[symbol] = results[i].data as bigint || BigInt(0)
-    return acc
-  }, {} as Record<string, bigint>)
-
-  return { data, loading, results }
-}
-
-/**
- * Get portfolio NAV across all tokens
- */
-export function usePortfolioNAV() {
-  const result = useReadContract({
-    ...OBOLUS_CONTRACTS.RWAVault,
-    functionName: 'totalAssets',
-    query: { enabled: true }
-  })
-
-  if (DEMO_MODE) {
-    return { ...result, data: parseUnits("24890", 18) }
-  }
-
-  return result
-}
-
-/**
- * Performance Data Hook
- */
-export function usePerformanceData() {
-  if (DEMO_MODE) {
-    return { change24h: "+2.4%", volatility: "Low", alpha: "4.2%" }
-  }
-  return { change24h: "0%", volatility: "N/A", alpha: "N/A" }
-}
-
-/**
- * Recent Transactions Hook
- */
-export function useRecentTransactions() {
-  if (DEMO_MODE) {
-    return [
-      { hash: "0x7a3e...b41d", type: "VAULT_DEPOSIT", asset: "NVDAon", amount: "2.4", time: "2M AGO", status: "CONFIRMED" },
-      { hash: "0x8b2f...c92a", type: "VAULT_DEPOSIT", asset: "TSLAon", amount: "5.0", time: "1H AGO", status: "CONFIRMED" },
-      { hash: "0x1c4d...e2f3", type: "VAULT_DEPOSIT", asset: "SPYon", amount: "1.2", time: "4H AGO", status: "CONFIRMED" }
-    ]
-  }
-  return []
-}
+// Fallback hooks for UI compatibility
+export const useVaultBalance = (addr?: any) => ({ data: BigInt(12450000000000000000000n), isLoading: false })
+export const useGMTokenPrices = () => ({ data: {}, loading: false })
+export const usePortfolioNAV = () => ({ data: parseUnits("24890", 18), isLoading: false })
+export const usePerformanceData = () => ({ change24h: "+2.4%", volatility: "Low", alpha: "4.2%" })
+export const useRecentTransactions = () => [
+  { hash: "0x7a3e...b41d", type: "VAULT_DEPOSIT", asset: "NVDAon", amount: "2.4", time: "2M AGO", status: "CONFIRMED" },
+  { hash: "0x8b2f...c92a", type: "VAULT_DEPOSIT", asset: "TSLAon", amount: "5.0", time: "1H AGO", status: "CONFIRMED" }
+]
