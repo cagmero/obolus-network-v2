@@ -1,0 +1,179 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+import { Search, ArrowUpDown, ChevronDown, Activity, TrendingUp, BarChart3, Search as SearchIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { VAULTS, Vault } from "@/lib/vaults"
+import { cn } from "@/lib/utils"
+
+export default function VaultsPage() {
+  const [filter, setFilter] = useState<'ALL' | 'MY_POSITIONS' | 'BLUE_CHIPS' | 'TECH' | 'ETF'>('ALL')
+  const [search, setSearch] = useState('')
+
+  const filteredVaults = VAULTS.filter(vault => {
+    const matchesSearch = vault.name.toLowerCase().includes(search.toLowerCase()) || 
+                          vault.symbol.toLowerCase().includes(search.toLowerCase())
+    
+    if (filter === 'ALL') return matchesSearch
+    return matchesSearch && vault.category === filter
+  })
+
+  return (
+    <div className="flex flex-col gap-8 font-mono pb-20 max-w-7xl mx-auto">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/20 pb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tighter text-foreground uppercase">VAULTS // TOKENIZED_EQUITY</h1>
+          <p className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mt-1">
+             Obolus_Dynamic_Position_Management // Active_Market_Feed
+          </p>
+        </div>
+        
+        {/* Stats bar */}
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Active_Vaults</span>
+            <span className="text-xl font-bold text-primary">9</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Total_TVL</span>
+            <span className="text-xl font-bold text-foreground">$0.00</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Avg_APY</span>
+            <span className="text-xl font-bold text-green-500">11.1%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div className="lg:col-span-8 flex flex-wrap items-center gap-2">
+          {['ALL', 'MY_POSITIONS', 'BLUE_CHIPS', 'TECH', 'ETF'].map((f) => (
+            <Button
+              key={f}
+              variant="outline"
+              onClick={() => setFilter(f as any)}
+              className={cn(
+                "h-8 text-[9px] font-black tracking-widest uppercase px-4 border overflow-hidden relative",
+                filter === f 
+                  ? "bg-primary text-primary-foreground border-primary" 
+                  : "bg-white/5 border-border/40 text-foreground/60 hover:border-primary/40"
+              )}
+            >
+              {f}
+              {filter === f && <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-white/20 -mr-1 -mt-1 rotate-45" />}
+            </Button>
+          ))}
+        </div>
+
+        <div className="lg:col-span-4 relative group">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40 group-focus-within:text-primary transition-colors">
+            <SearchIcon className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            placeholder="SEARCH_BY_ASSET_NAME"
+            className="w-full h-10 bg-white/5 border border-border/40 rounded-xl pl-10 pr-4 text-[11px] font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-primary/40 focus:bg-white/10 transition-all uppercase tracking-widest"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Table Header / Sort Controls */}
+      <div className="bg-white/5 border border-border/20 rounded-2xl overflow-hidden backdrop-blur-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-border/10 bg-white/5">
+                <th className="px-6 py-4">
+                  <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Asset</span>
+                </th>
+                <th className="px-6 py-4">
+                  <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Platform</span>
+                </th>
+                <th className="px-6 py-4">
+                  <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">APY</span>
+                    <ArrowUpDown className="w-3 h-3 text-foreground/20" />
+                  </div>
+                </th>
+                <th className="px-6 py-4">
+                  <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Daily</span>
+                    <ArrowUpDown className="w-3 h-3 text-foreground/20" />
+                  </div>
+                </th>
+                <th className="px-6 py-4">
+                  <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest text-right">TVL</span>
+                    <ArrowUpDown className="w-3 h-3 text-foreground/20" />
+                  </div>
+                </th>
+                <th className="px-6 py-4">
+                   <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Deposited</span>
+                    <ArrowUpDown className="w-3 h-3 text-foreground/20" />
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-right">
+                   <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Action</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredVaults.length > 0 ? (
+                filteredVaults.map((vault) => (
+                  <tr key={vault.id} className="group hover:bg-white/5 transition-colors border-b border-border/5 last:border-0 relative">
+                    <td className="px-6 py-5">
+                       <div className="flex items-center gap-4">
+                          <div className={cn("w-1 h-8 rounded-full")} style={{ backgroundColor: vault.color }} />
+                          <div className="flex flex-col">
+                             <span className="text-sm font-black text-foreground uppercase tracking-tight">{vault.symbol}</span>
+                             <span className="text-[10px] text-foreground/40 font-bold uppercase">{vault.name}</span>
+                          </div>
+                       </div>
+                    </td>
+                    <td className="px-6 py-5">
+                       <span className="text-[10px] font-bold text-foreground/60 uppercase group-hover:text-foreground transition-colors">{vault.platform}</span>
+                    </td>
+                    <td className="px-6 py-5">
+                       <div className="flex flex-col">
+                          <span className="text-sm font-black text-green-500">{vault.mockAPY}%</span>
+                          <span className="text-[9px] text-foreground/20 uppercase font-black">Performance_Fee: 0%</span>
+                       </div>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                       <span className="text-[11px] font-bold text-foreground/80">{vault.mockDailyAPY}%</span>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                       <span className="text-[11px] font-bold text-foreground/80">$0.00</span>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                       <span className="text-[11px] font-bold text-foreground/80">0</span>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                       <Link href={`/vault/${vault.id}`}>
+                        <Button className="h-8 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/20 text-[9px] font-black uppercase tracking-widest px-4 rounded-xl transition-all">
+                          [DEPOSIT]
+                        </Button>
+                       </Link>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                   <td colSpan={7} className="px-6 py-20 text-center opacity-30 text-[10px] uppercase font-black tracking-widest">
+                     No_vaults_found_matching_search_parameters
+                   </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

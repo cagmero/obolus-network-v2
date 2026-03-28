@@ -211,5 +211,8 @@ export const usePortfolioNAV = () => ({ data: parseUnits("24890", 18), isLoading
 export const usePerformanceData = () => ({ change24h: "+2.4%", volatility: "Low", alpha: "4.2%" })
 export const useRecentTransactions = () => [
   { hash: "0x7a3e...b41d", type: "VAULT_DEPOSIT", asset: "NVDAon", amount: "2.4", time: "2M AGO", status: "CONFIRMED" },
-  { hash: "0x8b2f...c92a", type: "VAULT_DEPOSIT", asset: "TSLAon", amount: "5.0", time: "1H AGO", status: "CONFIRMED" }
+  { hash: "0x8b2f...c92a", type: "VAULT_DEPOSIT", asset: "TSLAon", amount: "5.0", time: "1H AGO", status: "CONFIRMED" },
+  { hash: "0x9c1d...e83b", type: "VAULT_WITHDRAW", asset: "SPYx", amount: "1.2", time: "3H AGO", status: "CONFIRMED" },
+  { hash: "0xad2c...f74a", type: "VAULT_DEPOSIT", asset: "AAPLx", amount: "10.0", time: "5H AGO", status: "PENDING" },
+  { hash: "0xbe3b...a65d", type: "VAULT_DEPOSIT", asset: "AMZNon", amount: "0.5", time: "1D AGO", status: "CONFIRMED" },
 ]
