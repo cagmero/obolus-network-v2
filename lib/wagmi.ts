@@ -1,7 +1,7 @@
-import { http, createConfig, createStorage, cookieStorage } from 'wagmi'
+import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { bsc, bscTestnet } from 'wagmi/chains'
-import { injected } from 'wagmi/connectors'
 import { parseAbi, defineChain } from 'viem'
+import { cookieStorage, createStorage } from 'wagmi'
 
 // Custom Zama Devnet Chain
 export const zamaDevnet = defineChain({
@@ -13,46 +13,39 @@ export const zamaDevnet = defineChain({
   },
 })
 
-export const config = createConfig({
+export const config = getDefaultConfig({
+  appName: 'Obolus Network',
+  projectId: '1745eedb32cb0f103490b50b14761c85',
   chains: [zamaDevnet, bsc, bscTestnet],
-  connectors: [
-    injected(),
-  ],
   ssr: true,
   storage: createStorage({
     storage: cookieStorage
   }),
-  transports: {
-    [zamaDevnet.id]: http(),
-    [bsc.id]: http(),
-    [bscTestnet.id]: http(),
-  },
 })
 
 // Obolus V1 Contracts - Zama Devnet
 export const OBOLUS_ADDRESSES = {
   zamaDevnet: {
-    // These will be updated after deployment
     RWAVault: "0x489675685B62bB958B5C9672777A464aBb31B299" as const,
     PositionManager: "0xe7Af7E8E7e9e8790EbB143e90bB3f0512" as const,
     ObolusOracle: "0x91f8Aff3738825e8eB16FC6f6b1A7A4647bDB299" as const,
   }
 }
 
-// ABIs - Updated for fhEVM
+// ABIs
 export const RWAVaultABI = parseAbi([
   "function depositGM(address token, uint256 amount) external returns (uint256)",
   "function withdrawGM(address token, uint256 shares) external returns (uint256)",
   "function totalAssets() view returns (uint256)",
-  "function balanceOf(address user) view returns (uint256)", // Returns euint64 address handle
-  "function decryptBalance(address user) view returns (uint256)", // Decrypts if sender == user
+  "function balanceOf(address user) view returns (uint256)",
+  "function decryptBalance(address user) view returns (uint256)",
   "function acceptedTokens(address) view returns (bool)",
   "event Deposited(address indexed user, address indexed token, uint256 amount, uint256 shares)",
   "event Withdrawn(address indexed user, address indexed token, uint256 amount, uint256 shares)"
 ])
 
 export const PositionManagerABI = parseAbi([
-  "function getPosition(address user, address token) view returns (uint256)", // Returns euint64 handle
+  "function getPosition(address user, address token) view returns (uint256)",
   "function decryptPosition(address user, address token) view returns (uint256)",
   "function updatePosition(address user, address token, uint256 amount) external",
   "event PositionUpdated(address indexed user, address indexed token, uint256 amount)"
