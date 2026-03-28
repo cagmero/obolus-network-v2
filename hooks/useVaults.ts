@@ -188,8 +188,25 @@ export function useVaultWithdraw() {
 }
 
 // Fallback hooks for UI compatibility
+export const usePortfolioPositions = (addr?: any) => ({ 
+  data: {
+    "TSLAon": parseUnits("12.4", 18),
+    "NVDAon": parseUnits("8.2", 18),
+    "SPYon": parseUnits("5.1", 18),
+    "QQQon": parseUnits("3.7", 18)
+  }, 
+  loading: false 
+})
 export const useVaultBalance = (addr?: any) => ({ data: BigInt("12450000000000000000000"), isLoading: false })
-export const useGMTokenPrices = () => ({ data: {}, loading: false })
+export const useGMTokenPrices = () => ({ 
+  data: {
+    "TSLAon": parseUnits("240.5", 18),
+    "NVDAon": parseUnits("125.2", 18),
+    "SPYon": parseUnits("520.1", 18),
+    "QQQon": parseUnits("450.7", 18)
+  }, 
+  loading: false 
+})
 export const usePortfolioNAV = () => ({ data: parseUnits("24890", 18), isLoading: false })
 export const usePerformanceData = () => ({ change24h: "+2.4%", volatility: "Low", alpha: "4.2%" })
 export const useRecentTransactions = () => [

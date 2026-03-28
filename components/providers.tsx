@@ -24,25 +24,19 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        {mounted ? (
-          <RainbowKitProvider 
-            theme={darkTheme({
-              accentColor: '#9fd843',
-              accentColorForeground: 'black',
-              borderRadius: 'large',
-              fontStack: 'system',
-              overlayBlur: 'small',
-            })}
-          >
-            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-              {children}
-            </ThemeProvider>
-          </RainbowKitProvider>
-        ) : (
+        <RainbowKitProvider 
+          theme={darkTheme({
+            accentColor: '#9fd843',
+            accentColorForeground: 'black',
+            borderRadius: 'large',
+            fontStack: 'system',
+            overlayBlur: 'small',
+          })}
+        >
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             {children}
           </ThemeProvider>
-        )}
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )
