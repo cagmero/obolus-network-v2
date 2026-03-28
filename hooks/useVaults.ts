@@ -3,7 +3,8 @@
 import { useReadContract, useWriteContract, useAccount } from 'wagmi'
 import { OBOLUS_CONTRACTS } from '@/lib/wagmi'
 import { GM_TOKENS } from '@/lib/constants'
-import { parseUnits, parseAbi } from 'viem'
+import { parseUnits, parseAbi, formatUnits } from 'viem'
+import { useState } from 'react'
 
 // Generic ERC20 ABI for Approval
 const ERC20_ABI = parseAbi([
@@ -12,7 +13,7 @@ const ERC20_ABI = parseAbi([
 ])
 
 /**
- * Get user's vault share balance
+ * Get user's vault share balance (Encrypted Handle)
  */
 export function useVaultBalance(userAddress?: `0x${string}`) {
   return useReadContract({
@@ -24,11 +25,28 @@ export function useVaultBalance(userAddress?: `0x${string}`) {
 }
 
 /**
- * Get user's individual GM token positions
+ * Reveal Balance Hook (Decryption)
+ */
+export function useDecryptBalance(userAddress?: `0x${string}`) {
+  const { data: decryptedRaw, refetch, isLoading, isError } = useReadContract({
+    ...OBOLUS_CONTRACTS.RWAVault,
+    functionName: 'decryptBalance',
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: false } // Triggered manually
+  })
+
+  const reveal = () => refetch()
+
+  // Formatted decrypted balance
+  const balance = decryptedRaw ? formatUnits(decryptedRaw as bigint, 18) : "0"
+
+  return { balance, reveal, isLoading, isError, hasData: !!decryptedRaw }
+}
+
+/**
+ * Get user's individual GM token positions (Encrypted)
  */
 export function usePortfolioPositions(userAddress?: `0x${string}`) {
-  // Obolus V1 doesn't have an easily enumerable list in PositionManager
-  // We'll call for each known GM token from constants
   const results = Object.entries(GM_TOKENS).map(([key, token]) => {
     return useReadContract({
       ...OBOLUS_CONTRACTS.PositionManager,
@@ -65,7 +83,7 @@ export function useDeposit() {
       args: [OBOLUS_CONTRACTS.RWAVault.address, units],
     })
 
-    // 2. Deposit
+    // 2. Deposit (Plaintext amount, internal encryption in contract)
     return deposit({
       ...OBOLUS_CONTRACTS.RWAVault,
       functionName: 'depositGM',
@@ -116,9 +134,7 @@ export function useGMTokenPrices() {
 /**
  * Get portfolio NAV across all tokens
  */
-export function usePortfolioNAV(userAddress?: `0x${string}`) {
-  // For V1 placeholder, we return total vault assets for now 
-  // as users don't have individual NAV calc in oracle yet
+export function usePortfolioNAV() {
   return useReadContract({
     ...OBOLUS_CONTRACTS.RWAVault,
     functionName: 'totalAssets',
