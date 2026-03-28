@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { getVaultById } from "@/lib/vaults"
+import { useVaultDeposit, useVaultWithdraw } from "@/hooks/useVaults"
 import { cn } from "@/lib/utils"
 import { 
   LineChart, 
@@ -42,6 +43,9 @@ export default function VaultDetailPage() {
   const [withdrawAmount, setWithdrawAmount] = useState("")
   const [depositSlider, setDepositSlider] = useState([0])
   const [withdrawSlider, setWithdrawSlider] = useState([0])
+  
+  const { execute: handleDeposit } = useVaultDeposit()
+  const { execute: handleWithdraw } = useVaultWithdraw()
 
   // Mock chart data
   const chartData = useMemo(() => {
@@ -270,7 +274,10 @@ export default function VaultDetailPage() {
                      </div>
                   </div>
 
-                  <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] group">
+                  <Button 
+                    className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-[0_0_20px_rgba(var(--primary),0.3)] group"
+                    onClick={() => handleDeposit(vault.tokenAddress as `0x${string}`, depositAmount)}
+                  >
                     DEPOSIT_ASSETS
                   </Button>
 
@@ -315,7 +322,10 @@ export default function VaultDetailPage() {
                     </div>
                   </div>
 
-                  <Button className="w-full h-16 bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl group">
+                  <Button 
+                    className="w-full h-16 bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl group"
+                    onClick={() => handleWithdraw(vault.tokenAddress as `0x${string}`, withdrawAmount)}
+                  >
                     WITHDRAW_ASSETS
                   </Button>
                 </TabsContent>

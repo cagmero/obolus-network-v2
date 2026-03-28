@@ -1,6 +1,6 @@
 "use client"
 
-import { useReadContract, useWriteContract, useAccount } from 'wagmi'
+import { useReadContract, useWriteContract, useAccount, useSignTypedData } from 'wagmi'
 import { OBOLUS_CONTRACTS } from '@/lib/wagmi'
 import { GM_TOKENS } from '@/lib/constants'
 import { parseUnits, parseAbi, formatUnits } from 'viem'
@@ -96,12 +96,13 @@ export function useRevealPosition() {
  * Execute a Deposit Flow: Approve -> Deposit -> Submit Intent
  */
 export function useVaultDeposit() {
-  const { address } = useAccount()
+  const { address, chainId } = useAccount()
   const { writeContractAsync: approve } = useWriteContract()
   const { writeContractAsync: deposit } = useWriteContract()
+  const { signTypedDataAsync: signTypedData } = useSignTypedData()
 
   const execute = async (tokenAddress: `0x${string}`, amount: string) => {
-    if (!address) throw new Error("WALLET_NOT_CONNECTED")
+    if (!address || !chainId) throw new Error("WALLET_NOT_CONNECTED")
     const units = parseUnits(amount, 18)
     
     // 1. Approve
@@ -115,26 +116,51 @@ export function useVaultDeposit() {
     // 2. Deposit on-chain (public tx)
     const tx = await deposit({
       ...OBOLUS_CONTRACTS.RWAVault,
-      functionName: 'deposit', // Updated from depositGM
+      functionName: 'deposit',
       args: [tokenAddress, units],
     })
 
-    // 3. Submit Encrypted Intent to Obolus Server for CRE matching
-    const encryptedAmount = await encryptAmount(amount)
-    const nonce = Math.random().toString(36).substring(7)
+    // 3. Submit Encrypted Intent to Obolus Server
+    const encryptedPositionData = await encryptAmount(amount) 
     const timestamp = Math.floor(Date.now() / 1000)
+
+    const domain = {
+      name: "ObolusNetwork",
+      version: "0.0.1",
+      chainId,
+      verifyingContract: OBOLUS_CONTRACTS.RWAVault.address,
+    }
+
+    const types = {
+      "Submit Deposit": [
+        { name: "account", type: "address" },
+        { name: "token", type: "address" },
+        { name: "amount", type: "uint256" },
+        { name: "encryptedPositionData", type: "string" },
+        { name: "timestamp", type: "uint256" },
+      ],
+    }
+
+    const message = {
+      account: address,
+      token: tokenAddress,
+      amount: units,
+      encryptedPositionData,
+      timestamp: BigInt(timestamp),
+    }
+
+    const auth = await signTypedData({ domain, types, primaryType: "Submit Deposit", message })
 
     await fetch(`${SERVER_URL}/api/v1/intent/deposit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userAddress: address,
+        account: address,
         token: tokenAddress,
-        encryptedAmount,
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-        nonce,
-        signature: "0x0000",
-        timestamp
+        amount: units.toString(),
+        encryptedPositionData,
+        timestamp,
+        auth
       })
     })
 
@@ -148,36 +174,58 @@ export function useVaultDeposit() {
  * Execute a Withdraw Flow
  */
 export function useVaultWithdraw() {
-  const { address } = useAccount()
+  const { address, chainId } = useAccount()
   const { writeContractAsync: withdraw } = useWriteContract()
+  const { signTypedDataAsync: signTypedData } = useSignTypedData()
 
   const execute = async (tokenAddress: `0x${string}`, shares: string) => {
-    if (!address) throw new Error("WALLET_NOT_CONNECTED")
+    if (!address || !chainId) throw new Error("WALLET_NOT_CONNECTED")
     const units = parseUnits(shares, 18)
 
     // 1. Withdraw on-chain
     const tx = await withdraw({
       ...OBOLUS_CONTRACTS.RWAVault,
-      functionName: 'withdraw', // Updated from withdrawGM
+      functionName: 'withdraw',
       args: [tokenAddress, units],
     })
 
     // 2. Submit Encrypted Intent
-    const encryptedAmount = await encryptAmount(shares)
-    const nonce = Math.random().toString(36).substring(7)
     const timestamp = Math.floor(Date.now() / 1000)
+
+    const domain = {
+      name: "ObolusNetwork",
+      version: "0.0.1",
+      chainId,
+      verifyingContract: OBOLUS_CONTRACTS.RWAVault.address,
+    }
+
+    const types = {
+      "Submit Withdraw": [
+        { name: "account", type: "address" },
+        { name: "token", type: "address" },
+        { name: "amount", type: "uint256" },
+        { name: "timestamp", type: "uint256" },
+      ],
+    }
+
+    const message = {
+      account: address,
+      token: tokenAddress,
+      amount: units,
+      timestamp: BigInt(timestamp),
+    }
+
+    const auth = await signTypedData({ domain, types, primaryType: "Submit Withdraw", message })
 
     await fetch(`${SERVER_URL}/api/v1/intent/withdraw`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userAddress: address,
+        account: address,
         token: tokenAddress,
-        encryptedAmount,
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-        nonce,
-        signature: "0x0000",
-        timestamp
+        amount: units.toString(),
+        timestamp,
+        auth
       })
     })
 

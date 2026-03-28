@@ -12,6 +12,7 @@ export interface Vault {
   description: string;
   platform: string;
   tokenName: string;
+  tokenAddress: string;
 }
 
 export const VAULTS: Vault[] = [
@@ -19,6 +20,7 @@ export const VAULTS: Vault[] = [
     id: 'tslax',
     symbol: 'TSLAx',
     tokenName: 'MockTSLAx',
+    tokenAddress: '0x1000000000000000000000000000000000000001',
     name: 'Tesla Inc',
     underlying: 'TSLA',
     color: '#E31937',
@@ -34,6 +36,7 @@ export const VAULTS: Vault[] = [
     id: 'aaplx',
     symbol: 'AAPLx',
     tokenName: 'MockAAPLx',
+    tokenAddress: '0x1000000000000000000000000000000000000002',
     name: 'Apple Inc',
     underlying: 'AAPL',
     color: '#A0A0A0',
@@ -49,6 +52,7 @@ export const VAULTS: Vault[] = [
     id: 'nvdaon',
     symbol: 'NVDAon',
     tokenName: 'MockNVDAon',
+    tokenAddress: '0x1000000000000000000000000000000000000003',
     name: 'NVIDIA Corp',
     underlying: 'NVDA',
     color: '#76B900',
@@ -64,6 +68,7 @@ export const VAULTS: Vault[] = [
     id: 'googlx',
     symbol: 'GOOGLx',
     tokenName: 'MockGOOGLx',
+    tokenAddress: '0x1000000000000000000000000000000000000004',
     name: 'Alphabet Inc',
     underlying: 'GOOGL',
     color: '#4285F4',
@@ -79,6 +84,7 @@ export const VAULTS: Vault[] = [
     id: 'spyx',
     symbol: 'SPYx',
     tokenName: 'MockSPYx',
+    tokenAddress: '0x1000000000000000000000000000000000000005',
     name: 'S&P 500 ETF',
     underlying: 'SPY',
     color: '#F58220',
@@ -94,6 +100,7 @@ export const VAULTS: Vault[] = [
     id: 'crclx',
     symbol: 'CRCLX',
     tokenName: 'MockCRCLX',
+    tokenAddress: '0x1000000000000000000000000000000000000006',
     name: 'Circle',
     underlying: 'CRCL',
     color: '#800080',
@@ -109,6 +116,7 @@ export const VAULTS: Vault[] = [
     id: 'muon',
     symbol: 'MUon',
     tokenName: 'MockMUon',
+    tokenAddress: '0x1000000000000000000000000000000000000007',
     name: 'Micron Tech',
     underlying: 'MU',
     color: '#008080',
@@ -124,6 +132,7 @@ export const VAULTS: Vault[] = [
     id: 'qqqon',
     symbol: 'QQQon',
     tokenName: 'MockQQQon',
+    tokenAddress: '0x1000000000000000000000000000000000000008',
     name: 'Nasdaq 100 ETF',
     underlying: 'QQQ',
     color: '#4B0082',
@@ -139,6 +148,7 @@ export const VAULTS: Vault[] = [
     id: 'amznon',
     symbol: 'AMZNon',
     tokenName: 'MockAMZNon',
+    tokenAddress: '0x1000000000000000000000000000000000000009',
     name: 'Amazon.com Inc',
     underlying: 'AMZN',
     color: '#FFBF00',
