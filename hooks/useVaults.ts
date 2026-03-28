@@ -188,7 +188,7 @@ export function useVaultWithdraw() {
 }
 
 // Fallback hooks for UI compatibility
-export const useVaultBalance = (addr?: any) => ({ data: BigInt(12450000000000000000000n), isLoading: false })
+export const useVaultBalance = (addr?: any) => ({ data: BigInt("12450000000000000000000"), isLoading: false })
 export const useGMTokenPrices = () => ({ data: {}, loading: false })
 export const usePortfolioNAV = () => ({ data: parseUnits("24890", 18), isLoading: false })
 export const usePerformanceData = () => ({ change24h: "+2.4%", volatility: "Low", alpha: "4.2%" })

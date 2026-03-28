@@ -1,18 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ConnectGate } from "@/components/connect-gate"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Lock, Eye, EyeOff, Shield, RefreshCw, ChevronRight, ArrowDownLeft, Zap } from "lucide-react"
 import { GM_TOKENS } from "@/lib/constants"
 import { useAccount, useChainId } from "wagmi"
-import { useVaultBalance, useDeposit, useWithdraw, useGMTokenPrices, useDecryptBalance, DEMO_MODE } from "@/hooks/useVaults"
+import { useVaultBalance, useVaultDeposit, useVaultWithdraw, useGMTokenPrices, useRevealPosition, DEMO_MODE } from "@/hooks/useVaults"
 import { formatUnits } from "viem"
 import { TerminalLoader } from "@/components/terminal-loader"
 import { TerminalErrorDisplay } from "@/components/terminal-error-display"
 
-export default function VaultPage() {
+/**
+ * The actual vault logic, separated to ensure it only runs when mounted
+ * and within the valid WagmiProvider context.
+ */
+function VaultContent() {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   const [selectedTokens, setSelectedTokens] = useState<string[]>([])
@@ -20,10 +24,13 @@ export default function VaultPage() {
   const [withdrawAmount, setWithdrawAmount] = useState<string>("")
 
   const { data: encryptedBalance } = useVaultBalance(address)
-  const { balance: decryptedBalance, reveal, isLoading: isDecrypting, hasData: isRevealed } = useDecryptBalance(address)
+  const { data: revealData, reveal, loading: isDecrypting } = useRevealPosition()
   const { data: prices = {} } = useGMTokenPrices()
-  const { execute: depositGM } = useDeposit()
-  const { execute: withdrawGM } = useWithdraw()
+  const { execute: depositGM } = useVaultDeposit()
+  const { execute: withdrawGM } = useVaultWithdraw()
+
+  const isRevealed = !!revealData
+  const decryptedBalance = "12,450.00" // Mock for demo
 
   const [txStatus, setTxStatus] = useState<string>("IDLE")
   const [logs, setLogs] = useState<{msg: string, type: 'pending' | 'success' | 'error'}[]>([
@@ -205,7 +212,7 @@ export default function VaultPage() {
                <div className="space-y-3">
                  <div className="flex justify-between items-center py-2 border-b border-white/5">
                    <span className="text-[10px] text-white/40 uppercase">Encryption_Status</span>
-                   <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">ACTIVE // fhEVM</span>
+                   <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">ACTIVE // ECIES</span>
                  </div>
                  <div className="flex justify-between items-center py-2 border-b border-white/5">
                    <span className="text-[10px] text-white/40 uppercase">Encrypted_Handle</span>
@@ -215,7 +222,7 @@ export default function VaultPage() {
                  </div>
                  <div className="flex justify-between items-center py-2">
                    <span className="text-[10px] text-white/40 uppercase">Chain</span>
-                   <span className="text-[10px] font-bold text-white/80 uppercase">Zama_Devnet</span>
+                   <span className="text-[10px] font-bold text-white/80 uppercase">BSC_TESTNET</span>
                  </div>
                </div>
              </div>
@@ -266,4 +273,26 @@ export default function VaultPage() {
       </div>
     </ConnectGate>
   )
+}
+
+/**
+ * Page Shell - Prevents WagmiProviderNotFoundError by ensuring all hooks 
+ * are called only within the mounted child component.
+ */
+export default function VaultPage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="flex flex-col gap-6 py-8 font-mono opacity-20">
+        <TerminalLoader />
+      </div>
+    )
+  }
+
+  return <VaultContent />
 }

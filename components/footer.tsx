@@ -3,12 +3,19 @@
 import { Shield } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
 import { useAccount } from "wagmi"
 
 export function AppFooter() {
     const pathname = usePathname()
     const { isConnected } = useAccount()
+    const [mounted, setMounted] = useState(false)
 
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) return null
     if (pathname === "/" && !isConnected) return null
     return (
         <footer className="w-full flex flex-col md:flex-row justify-between items-center py-6 px-6 md:px-12 border-t border-white/5 gap-6 opacity-40 font-mono">
