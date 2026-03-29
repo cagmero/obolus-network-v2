@@ -1,9 +1,9 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
-import { useTokenPrice } from "@/hooks/useMarketData"
+import { useTokenPrice, usePriceHistory } from "@/hooks/useMarketData"
 import { VAULTS, Vault } from "@/lib/vaults"
-import { GM_TOKEN_ADDRESSES, MOCK_PRICES } from "@/lib/ondoOracle"
+import { ONDO_GM_BSC_ADDRESSES } from "@/lib/ondoOracle"
 import { Button } from "@/components/ui/button"
 import { TrendingUp, TrendingDown, Clock, Shield, Zap, Globe, Activity, ArrowUpRight, ChevronRight, Lock, ChevronDown } from "lucide-react"
 import Link from "next/link"
@@ -11,54 +11,30 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useAccount } from "wagmi"
-  import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
-import { useAssetPriceHistory } from "@/hooks/useChartData"
+import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
 import PriceChart from "@/components/PriceChart"
 
 export default function AssetPage() {
   const params = useParams()
   const router = useRouter()
   const { isConnected } = useAccount()
-  const symbol = (params.id as string).toUpperCase()
-  const vault = VAULTS.find(v => v.symbol.toUpperCase() === symbol)
-  const { data: currentPrice } = useTokenPrice(symbol)
-
+  const symbolKey = (params.id as string).toUpperCase()
+  const vault = VAULTS.find(v => v.symbol.toUpperCase() === symbolKey)
   const [timeRange, setTimeRange] = useState('1M')
-  const [activeTab, setActiveTab] = useState('DEPOSIT')
-
-  const selectedDays = useMemo(() => {
-    switch (timeRange) {
-      case '1D': return 1;
-      case '1W': return 7;
-      case '1M': return 30;
-      case '3M': return 90;
-      case '1Y': return 365;
-      case 'ALL': return 730;
-      default: return 30;
-    }
-  }, [timeRange]);
-
-  const { data: chartData, isLoading: chartLoading } = useAssetPriceHistory(symbol, selectedDays)
+  const [activeTab, setActiveTab] = useState<'DEPOSIT' | 'WITHDRAW'>('DEPOSIT')
+  
+  const { data: priceData, isLoading } = useTokenPrice(symbolKey)
+  const { data: history, isLoading: historyLoading } = usePriceHistory(symbolKey, timeRange)
   
   if (!vault) {
     return <div className="p-20 text-center font-mono uppercase text-xs font-black">ASSET_NOT_FOUND // ERROR_404</div>
   }
 
-  const isUp = useMemo(() => {
-    if (!chartData || chartData.length < 2) return true
-    return chartData[chartData.length - 1].price >= chartData[0].price
-  }, [chartData])
-
-  const priceChange = useMemo(() => {
-      if (!chartData || chartData.length < 2) return "0.00"
-      const first = chartData[0].price
-      const last = chartData[chartData.length - 1].price
-      return (((last - first) / first) * 100).toFixed(2)
-  }, [chartData])
+  const change = priceData?.changePercent ?? 0
+  const isUp = change >= 0
 
   return (
     <div className="flex flex-col gap-8 font-mono pb-20 max-w-7xl mx-auto">
-      {/* Navigation Breadcrumb */}
       <div className="flex items-center gap-2 text-[10px] text-foreground/40 font-bold uppercase tracking-widest">
         <Link href="/markets" className="hover:text-primary">MARKETS</Link>
         <ChevronRight className="w-3 h-3" />
@@ -83,22 +59,55 @@ export default function AssetPage() {
                   <span className="text-xs font-bold text-foreground/40">{vault.symbol}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-[9px] font-black text-green-500 tracking-widest uppercase flex items-center gap-1.5">
-                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                    MARKET_OPEN
+                  {priceData?.isMarketOpen
+                    ? <div className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-[9px] font-black text-green-500 tracking-widest uppercase flex items-center gap-1.5">
+                        <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
+                        MARKET_OPEN
+                      </div>
+                    : <div className="px-2 py-0.5 rounded-full bg-gray-500/10 border border-gray-500/20 text-[9px] font-black text-gray-400 tracking-widest uppercase flex items-center gap-1.5">
+                        <div className="w-1 h-1 bg-gray-500 rounded-full" />
+                        MARKET_CLOSED
+                      </div>
+                  }
+                  
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-foreground/30 font-bold uppercase tracking-tighter italic">
+                      Source: {priceData?.source === 'ondo+twelve_data' && (
+                        <span className="text-green-300">ONDO_SVALUE × TWELVE_DATA</span>
+                      )}
+                      {priceData?.source === 'twelve_data_only' && (
+                        <span className="text-blue-300">TWELVE_DATA // LIVE</span>
+                      )}
+                      {priceData?.source === 'fallback' && (
+                        <span className="text-yellow-300">MOCK_PRICE // FALLBACK</span>
+                      )}
+                    </span>
+                    
+                    {priceData?.sValue !== 1.0 && priceData?.sValue && (
+                      <div className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">
+                        SVALUE: {priceData.sValue.toFixed(6)} // ONDO_ORACLE
+                      </div>
+                    )}
+                    
+                    {priceData?.paused && (
+                      <div className="text-[8px] font-mono text-amber-400 border border-amber-400 px-2 py-0.5 rounded uppercase tracking-widest animate-pulse">
+                        ⚠ CORPORATE_ACTION_PENDING // PRICE_UPDATES_PAUSED
+                      </div>
+                    )}
                   </div>
-                  <span className="text-[10px] text-foreground/30 font-bold uppercase tracking-tighter italic">Source: {GM_TOKEN_ADDRESSES[symbol] ? "Ondo_Oracle" : "Mock_Price"}</span>
                 </div>
               </div>
             </div>
             
             <div className="text-right space-y-1">
               <div className="text-4xl font-black tracking-tighter text-foreground tabular-nums">
-                ${(currentPrice || MOCK_PRICES[symbol] || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {priceData?.price
+                  ? `$${priceData.price.toFixed(2)}`
+                  : isLoading ? 'LOADING...' : '$---'}
               </div>
               <div className={cn("text-[11px] font-black tracking-widest uppercase flex items-center justify-end gap-1.5", isUp ? "text-green-500" : "text-red-500")}>
                 {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {isUp ? "+" : ""}{priceChange}% ({timeRange})
+                {isUp ? "+" : ""}{change.toFixed(2)}% (24H)
               </div>
             </div>
           </div>
@@ -109,12 +118,12 @@ export default function AssetPage() {
             isUp ? "bg-green-500/[0.03]" : "bg-red-500/[0.03]"
           )}>
             <PriceChart 
-               data={chartData || []} 
-               symbol={symbol} 
+               data={history || []} 
+               symbol={symbolKey} 
                color={vault.color} 
                timeRange={timeRange} 
                onTimeRangeChange={setTimeRange} 
-               isLoading={chartLoading} 
+               isLoading={historyLoading} 
             />
           </div>
 
@@ -143,7 +152,7 @@ export default function AssetPage() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-[9px] font-black text-foreground/30 uppercase tracking-widest">Oracle System</p>
-                    <p className="text-xs font-bold text-foreground uppercase">{GM_TOKEN_ADDRESSES[symbol] ? "Ondo_Synthetic" : "Obolus_Mock"}</p>
+                    <p className="text-xs font-bold text-foreground uppercase">{priceData?.source === 'ondo+twelve_data' ? "Ondo_Synthetic" : "Obolus_Mock"}</p>
                   </div>
                </div>
             </div>
@@ -165,7 +174,7 @@ export default function AssetPage() {
               <h3 className="text-[9px] font-black text-foreground/40 uppercase tracking-widest">Contract Address (BSC)</h3>
               <div className="flex items-center justify-between gap-2 p-2 bg-black/40 rounded-xl border border-white/5">
                 <span className="text-[9px] font-mono text-primary/80 truncate">
-                  {GM_TOKEN_ADDRESSES[symbol] || vault.tokenAddress}
+                  {ONDO_GM_BSC_ADDRESSES[symbolKey] || vault.tokenAddress}
                 </span>
                 <button className="text-primary hover:text-primary/70 transition-colors shrink-0">
                   <ArrowUpRight className="w-3 h-3" />
@@ -184,7 +193,7 @@ export default function AssetPage() {
                 {['DEPOSIT', 'WITHDRAW'].map((t) => (
                   <button
                     key={t}
-                    onClick={() => setActiveTab(t)}
+                    onClick={() => setActiveTab(t as any)}
                     className={cn(
                       "flex-1 py-3 text-[10px] font-black tracking-[0.2em] uppercase rounded-xl transition-all",
                       activeTab === t 

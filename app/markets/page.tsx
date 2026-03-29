@@ -2,7 +2,7 @@
 
 import { useAllPrices } from "@/hooks/useMarketData"
 import { VAULTS } from "@/lib/vaults"
-import { GM_TOKEN_ADDRESSES, MOCK_PRICES } from "@/lib/ondoOracle"
+import { ONDO_GM_BSC_ADDRESSES } from "@/lib/ondoOracle"
 import { Button } from "@/components/ui/button"
 import { TrendingUp, TrendingDown, Clock, Shield, Zap, Globe, Activity, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
@@ -77,6 +77,7 @@ export default function MarketsPage() {
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">Asset</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">Underlying</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">Live Price</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">SValue</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">Source</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">24H Change</th>
                   <th className="px-6 py-4 text-[10px] font-black text-foreground/40 uppercase tracking-widest">7D_TREND</th>
@@ -86,10 +87,10 @@ export default function MarketsPage() {
               </thead>
               <tbody className="divide-y divide-border/5">
                 {VAULTS.map((vault) => {
-                  const isOndo = !!GM_TOKEN_ADDRESSES[vault.symbol];
-                  const price = prices?.[vault.symbol] || MOCK_PRICES[vault.symbol] || 0;
-                  const randomChange = (Math.random() * 4 - 2).toFixed(2);
-                  const isPositive = parseFloat(randomChange) >= 0;
+                  const data = prices?.[vault.symbol]
+                  const price = data?.price || 0
+                  const changePercent = data?.changePercent || 0
+                  const isPositive = changePercent >= 0
 
                   return (
                     <tr key={vault.id} className="group hover:bg-white/5 transition-colors">
@@ -100,30 +101,46 @@ export default function MarketsPage() {
                       <td className="px-6 py-5 text-[10px] text-foreground/40 font-bold uppercase tracking-tight">
                         {vault.name}
                       </td>
-                      <td className="px-6 py-5 font-black text-base tracking-tighter tabular-nums">
-                        ${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <td className="px-6 py-5 font-black text-base tracking-tighter tabular-nums space-y-1">
+                        <div>
+                          ${price ? price.toFixed(2) : "---"}
+                        </div>
+                        {data?.paused && (
+                          <div className="text-[7px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1 py-0.5 rounded-sm font-black tracking-tighter">⚠ PAUSED</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-5 text-[10px] font-mono text-foreground/40" title={data?.sValue && data.sValue !== 1.0 ? "Synthetic shares multiplier" : ""}>
+                         {data?.sValue && data.sValue !== 1.0 ? `×${data.sValue.toFixed(4)}` : "—"}
                       </td>
                       <td className="px-6 py-5">
                         <div className={cn(
                           "inline-flex px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest uppercase border",
-                          isOndo 
+                          data?.source === 'ondo+twelve_data'
                             ? "bg-green-500/10 text-green-500 border-green-500/20" 
-                            : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                            : data?.source === 'twelve_data_only'
+                              ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                              : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                         )}>
-                          {isOndo ? "ONDO_ORACLE" : "MOCK_PRICE"}
+                          {data?.source === 'ondo+twelve_data' ? "ONDO+LIVE" : data?.source === 'twelve_data_only' ? "LIVE" : "MOCK"}
                         </div>
                       </td>
                       <td className={cn("px-6 py-5 text-[11px] font-bold tabular-nums", isPositive ? "text-green-500" : "text-red-500")}>
-                        {isPositive ? "+" : ""}{randomChange}%
+                        {isPositive ? "+" : ""}{changePercent.toFixed(2)}%
                       </td>
                       <td className="px-6 py-5">
                         <Sparkline symbol={vault.symbol} />
                       </td>
                       <td className="px-6 py-5">
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/20 text-[9px] font-bold text-primary tracking-widest uppercase">
-                          <div className="w-1 h-1 bg-primary rounded-full animate-pulse" />
-                          MARKET_OPEN
-                        </div>
+                        {data?.isMarketOpen 
+                          ? <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/5 border border-primary/20 text-[9px] font-bold text-primary tracking-widest uppercase">
+                              <div className="w-1 h-1 bg-primary rounded-full animate-pulse" />
+                              MARKET_OPEN
+                            </div>
+                          : <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-500/5 border border-gray-500/20 text-[9px] font-bold text-gray-400 tracking-widest uppercase">
+                              <div className="w-1 h-1 bg-gray-500 rounded-full" />
+                              MARKET_CLOSED
+                            </div>
+                        }
                       </td>
                       <td className="px-6 py-5 text-right">
                         <Link href={`/assets/${vault.symbol.toLowerCase()}`}>

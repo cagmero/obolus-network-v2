@@ -1,89 +1,118 @@
-import { createPublicClient, http } from 'viem'
-import { bsc } from 'wagmi/chains'
+import { createPublicClient, http, parseAbi } from 'viem'
+import { bsc } from 'viem/chains'
 
 const BSC_CLIENT = createPublicClient({
   chain: bsc,
-  transport: http('https://bsc-dataseed.binance.org')
+  transport: http(process.env.NEXT_PUBLIC_BSC_RPC || 'https://bsc-dataseed1.binance.org', {
+    timeout: 10_000,
+    retryCount: 2,
+  })
 })
 
-const SYNTHETIC_SHARES_ORACLE = '0xF4Fd8a1B412633e10527454137A29Db7Aa35F15e'
+export const SYNTHETIC_SHARES_ORACLE = '0xF4Fd8a1B412633e10527454137A29Db7Aa35F15e' as const
 
-const ORACLE_ABI = [
-  {
-    name: 'getPrice',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'token', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }]
+export const ORACLE_ABI = parseAbi([
+  'function getSValue(address asset) external view returns (uint128 sValue, bool paused)',
+  'function getSValueBatch(address[] calldata assets) external view returns (uint128[] memory sValues, bool[] memory paused)',
+])
+
+// Real Ondo GM token addresses on BSC MAINNET
+// Note: These addresses should be updated with the real ones when available.
+// For now, using the ones from the previous ondoOracle.ts or placeholders.
+export const ONDO_GM_BSC_ADDRESSES: Record<string, `0x${string}`> = {
+  TSLAon: '0x2494b603a1158652d3a33994c643939634b59d93', 
+  NVDAon: '0xa9ee65b71946803277884d5885c3411b0e016f75', 
+  SPYon:  '0x6a708EAD771238919D85930b5a0f10454E1C331a', 
+  QQQon:  '0x0000000000000000000000000000000000000004', // PLACEHOLDER
+  AMZNon: '0x0000000000000000000000000000000000000005', // PLACEHOLDER
+  MUon:   '0x050362ab1072cb2ce74d74770e22a3203ad04ee5', 
+}
+
+// Default sValues (1:1 multiplier) used as fallback
+export const DEFAULT_SVALUES: Record<string, number> = {
+  TSLAon: 1.0, NVDAon: 1.0, SPYon: 1.0,
+  QQQon: 1.0, AMZNon: 1.0, MUon: 1.0,
+}
+
+export interface SValueResult {
+  sValue: number      // multiplier, e.g. 1.05 means 5% dividend compounded in
+  paused: boolean     // true during corporate actions
+  raw: bigint         // raw 18-decimal value from contract
+}
+
+// Fetch sValue for a single Ondo GM token
+export async function getOndoSValue(
+  symbol: string
+): Promise<SValueResult> {
+  const address = ONDO_GM_BSC_ADDRESSES[symbol]
+  // If address is placeholder or zero, return default
+  if (!address || address.startsWith('0x000000000000000000000000000000000000000')) {
+    return { sValue: DEFAULT_SVALUES[symbol] || 1.0, paused: false, raw: BigInt(1e18) }
   }
-] as const
-
-// Real Ondo GM token addresses on BSC Mainnet
-export const GM_TOKEN_ADDRESSES: Record<string, string> = {
-  TSLAon: '0x2494b603a1158652d3a33994c643939634b59d93',
-  NVDAon: '0xa9ee65b71946803277884d5885c3411b0e016f75',
-  SPYon:  '0x6a708EAD771238919D85930b5a0f10454E1C331a', // Example address
-  QQQon:  '0x[fetch_from_Ondo_GM_sheet_QQQon]',
-  AMZNon: '0x[fetch_from_Ondo_GM_sheet_AMZNon]',
-  MUon:   '0x050362ab1072cb2ce74d74770e22a3203ad04ee5',
-}
-
-export const MOCK_PRICES: Record<string, number> = {
-  TSLAon: 245.30,
-  NVDAon: 890.50,
-  SPYon:  512.80,
-  QQQon:  432.10,
-  AMZNon: 198.70,
-  MUon:   89.40,
-  TSLAx:  245.30,
-  AAPLx:  189.50,
-  GOOGLx: 178.20,
-  SPYx:   512.80,
-  CRCLX:  22.40,
-}
-
-export async function getTokenPrice(tokenAddress: string): Promise<bigint> {
   try {
-    // Basic validation for typical "placeholder" style addresses
-    if (!tokenAddress.startsWith('0x') || tokenAddress.includes('fetch')) {
-      throw new Error('Invalid address')
-    }
-
-    const price = await BSC_CLIENT.readContract({
-      address: SYNTHETIC_SHARES_ORACLE as `0x${string}`,
+    const [sValue, paused] = await BSC_CLIENT.readContract({
+      address: SYNTHETIC_SHARES_ORACLE,
       abi: ORACLE_ABI,
-      functionName: 'getPrice',
-      args: [tokenAddress as `0x${string}`]
+      functionName: 'getSValue',
+      args: [address],
     })
-    return price
+    return {
+      sValue: Number(sValue) / 1e18,
+      paused,
+      raw: sValue,
+    }
   } catch (e) {
-    console.warn(`Oracle read failed for ${tokenAddress}, using mock price fallback`)
-    return BigInt(0)
+    console.warn(`Ondo oracle read failed for ${symbol}:`, e)
+    return { sValue: DEFAULT_SVALUES[symbol] || 1.0, paused: false, raw: BigInt(1e18) }
   }
 }
 
-export async function getAllPrices(): Promise<Record<string, number>> {
-  const prices: Record<string, number> = {}
-  
-  // Handle Ondo tokens
-  for (const [symbol, address] of Object.entries(GM_TOKEN_ADDRESSES)) {
-    try {
-      const raw = await getTokenPrice(address)
-      if (raw > BigInt(0)) {
-        prices[symbol] = Number(raw) / 1e18
-      } else {
-        prices[symbol] = MOCK_PRICES[symbol] || 0
-      }
-    } catch {
-      prices[symbol] = MOCK_PRICES[symbol] || 0
+// Batch fetch sValues for all Ondo GM tokens
+export async function getAllSValues(): Promise<Record<string, SValueResult>> {
+  const symbols = Object.keys(ONDO_GM_BSC_ADDRESSES)
+  const addresses = symbols.map(s => ONDO_GM_BSC_ADDRESSES[s])
+
+  // Split into real addresses and placeholders
+  const realEntries: { symbol: string, address: `0x${string}` }[] = []
+  const result: Record<string, SValueResult> = {}
+
+  symbols.forEach((s, i) => {
+    const addr = addresses[i]
+    if (addr && !addr.startsWith('0x0000000000000000000000000000000000000')) {
+        realEntries.push({ symbol: s, address: addr })
+    } else {
+        result[s] = { sValue: DEFAULT_SVALUES[s] || 1.0, paused: false, raw: BigInt(1e18) }
     }
+  })
+
+  if (realEntries.length === 0) {
+    return result
   }
 
-  // Handle Non-Ondo tokens
-  const nonOndo = ['TSLAx', 'AAPLx', 'GOOGLx', 'SPYx', 'CRCLX']
-  for (const symbol of nonOndo) {
-    prices[symbol] = MOCK_PRICES[symbol] || 0
+  try {
+    const realAddresses = realEntries.map(e => e.address)
+    const [sValues, paused] = await BSC_CLIENT.readContract({
+      address: SYNTHETIC_SHARES_ORACLE,
+      abi: ORACLE_ABI,
+      functionName: 'getSValueBatch',
+      args: [realAddresses],
+    })
+    
+    realEntries.forEach((e, i) => {
+      result[e.symbol] = {
+        sValue: Number(sValues[i]) / 1e18,
+        paused: paused[i],
+        raw: sValues[i],
+      }
+    })
+    return result
+  } catch (e) {
+    console.warn('Ondo batch oracle read failed:', e)
+    symbols.forEach(s => {
+      if (!result[s]) {
+        result[s] = { sValue: DEFAULT_SVALUES[s] || 1.0, paused: false, raw: BigInt(1e18) }
+      }
+    })
+    return result
   }
-
-  return prices
 }

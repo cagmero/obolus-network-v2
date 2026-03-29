@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { useAccount, useReadContract, useChainId } from "wagmi"
 import { formatUnits } from "viem"
 import { useAllPrices } from "@/hooks/useMarketData"
-import { GM_TOKEN_ADDRESSES, MOCK_PRICES } from "@/lib/ondoOracle"
+import { ONDO_GM_BSC_ADDRESSES } from "@/lib/ondoOracle"
 import Sparkline from "@/components/Sparkline"
 
 const ERC20_ABI = [
@@ -158,8 +158,8 @@ function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: b
   })
 
   const formattedBalance = balanceValue ? formatUnits(balanceValue, 18) : "0.00"
-  const isOndo = !!GM_TOKEN_ADDRESSES[vault.symbol];
-  const currentPrice = prices?.[vault.symbol] || MOCK_PRICES[vault.symbol];
+  const data = prices?.[vault.symbol]
+  const currentPrice = data?.price
 
   return (
     <tr key={vault.id} className="group hover:bg-white/5 transition-colors border-b border-border/5 last:border-0 relative">
@@ -177,19 +177,24 @@ function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: b
             </div>
          </div>
       </td>
-      <td className="px-6 py-5">
+       <td className="px-6 py-5">
          <div className="flex flex-col gap-1">
             <div className="text-base font-black text-foreground tabular-nums tracking-tighter">
-               ${currentPrice ? currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
+               ${currentPrice ? currentPrice.toFixed(2) : "---"}
             </div>
             <div className={cn(
               "inline-flex self-start px-1 py-0.5 rounded text-[7px] font-black tracking-widest uppercase border leading-none",
-              isOndo 
+              data?.source === 'ondo+twelve_data'
                 ? "bg-green-500/10 text-green-500 border-green-500/20" 
-                : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                : data?.source === 'twelve_data_only'
+                  ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                  : "bg-amber-500/10 text-amber-500 border-amber-500/20"
             )}>
-              {isOndo ? "ORACLE" : "MOCK"}
+              {data?.source === 'ondo+twelve_data' ? "ONDO+LIVE" : data?.source === 'twelve_data_only' ? "LIVE" : "MOCK"}
             </div>
+            {data?.paused && (
+              <div className="text-[7px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1 py-0.5 rounded-sm font-black tracking-tighter">⚠ PAUSED</div>
+            )}
          </div>
       </td>
       <td className="px-6 py-5">

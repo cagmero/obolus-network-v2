@@ -6,8 +6,11 @@ import { parseUnits } from "viem"
 import { Button } from "@/components/ui/button"
 import { TOKEN_ADDRESSES } from "@/lib/tokenAddresses"
 import { VAULTS } from "@/lib/vaults"
-import { Wallet, Coins, Terminal, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
+import { Wallet, Coins, Terminal, CheckCircle2, AlertCircle, Loader2, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getKeyUsageStats, getTotalCallsRemaining } from "@/lib/twelvedata"
+import { useReadContract } from "wagmi"
+import { formatUnits } from "viem"
 
 const MOCK_ERC20_ABI = [
   {
@@ -138,12 +141,65 @@ export default function FaucetPage() {
           </div>
         </div>
       </div>
+
+      {/* API Status Section */}
+      <div className="mt-8 space-y-4">
+        <h2 className="text-xs font-bold tracking-widest text-foreground/60 uppercase px-2">
+          API_STATUS // TWELVE_DATA // KEY_ROTATION
+        </h2>
+        <div className="bg-white/5 border border-border/20 rounded-[32px] p-8 backdrop-blur-sm overflow-hidden relative group hover:border-primary/20 transition-all">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+            <Globe className="w-24 h-24 text-primary" />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {getKeyUsageStats().map((stat) => (
+              <div key={stat.keyIndex} className="space-y-3 p-4 bg-black/20 rounded-2xl border border-border/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest">KEY_{stat.keyIndex}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                </div>
+                <div className="text-xs font-mono font-bold text-foreground/80 truncate">{stat.keyPreview}</div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between text-[8px] font-black text-foreground/30 uppercase tracking-tighter">
+                    <span>Usage</span>
+                    <span>{stat.callsUsed}/800</span>
+                  </div>
+                  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-1000" 
+                      style={{ width: `${(stat.callsUsed / 800) * 100}%` }} 
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 flex flex-col justify-center text-center">
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">TOTAL_REMAINING</span>
+              <div className="text-2xl font-black text-primary tabular-nums tracking-tighter">
+                {getTotalCallsRemaining()}<span className="text-xs text-primary/40 font-bold ml-1">/2400</span>
+              </div>
+              <p className="text-[8px] text-primary/40 font-bold uppercase tracking-widest mt-1">Daily Reset: 00:00 UTC</p>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-border/10 grid grid-cols-1 md:grid-cols-2 gap-4 text-[9px] font-black uppercase tracking-[0.2em] text-foreground/30">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-3 h-3 text-green-500/50" />
+              <span>KEYS_ROTATE_AUTOMATICALLY // LEAST_USED_SELECTED</span>
+            </div>
+            <div className="flex items-center gap-2">
+               <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+               <span>LIVE_MARKET_DATA // SYNCED_BY_PRICE_ENGINE</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
-import { useReadContract } from "wagmi"
-import { formatUnits } from "viem"
 
 // ... (inside TokenCard)
 function TokenCard({ vault, onClaim, refreshTrigger }: { vault: any, onClaim: () => void, refreshTrigger: number }) {
