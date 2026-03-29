@@ -2,10 +2,10 @@
 
 import React from 'react'
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts'
-import { useAssetPriceHistory } from '@/hooks/useChartData'
+import { usePriceHistory } from '@/hooks/useMarketData'
 
 export default function Sparkline({ symbol }: { symbol: string }) {
-  const { data, isLoading } = useAssetPriceHistory(symbol, 7) // 7 days sparkline
+  const { data, isLoading } = usePriceHistory(symbol, '1W') // 7 days trend
 
   if (isLoading || !data || data.length < 2) {
     return <div className="w-20 h-8 bg-white/5 animate-pulse rounded" />

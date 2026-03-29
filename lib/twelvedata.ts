@@ -143,6 +143,28 @@ export async function fetchStockPrices(tickers: string[]): Promise<
   }
 }
 
+// Fetch real historical data from CoinGecko as a second fallback layer
+export async function fetchCoinGeckoHistory(symbol: string, days: number = 7): Promise<{ timestamp: string; price: number }[]> {
+  const id = COINGECKO_IDS[symbol]
+  if (!id) return []
+
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
+    const data = await res.json()
+    
+    if (!data.prices || !Array.isArray(data.prices)) return []
+    
+    return data.prices.map(([ts, price]: [number, number]) => ({
+      timestamp: new Date(ts).toISOString(),
+      price: Math.round(price * 100) / 100
+    }))
+  } catch (e) {
+    console.warn(`CoinGecko history fetch failed for ${symbol}:`, e)
+    return []
+  }
+}
+
 // Fetch historical OHLCV for charts
 export async function fetchPriceHistory(
   ticker: string,
@@ -162,8 +184,16 @@ export async function fetchPriceHistory(
       price: parseFloat(v.close),
     }))
   } catch {
-    // If Twelve Data history fails, try to get current price from CoinGecko at least
-    const symbol = Object.keys(UNDERLYING_TICKERS).find(s => UNDERLYING_TICKERS[s] === ticker)
+    // If Twelve Data history fails, try real history from CoinGecko
+    const symbol = Object.keys(UNDERLYING_TICKERS).find(s => UNDERLYING_TICKERS[s] === ticker) || ticker
+    const days = interval.includes('day') ? outputsize : (interval.includes('h') ? Math.ceil(outputsize/24) : 7)
+    
+    if (symbol) {
+        const cgHistory = await fetchCoinGeckoHistory(symbol, days)
+        if (cgHistory.length > 0) return cgHistory
+    }
+
+    // Last resort: smoother mock (if both APIs fail or limit hit)
     let currentPrice = 0
     if (symbol) {
         const prices = await fetchCoinGeckoPrices([symbol])
@@ -175,14 +205,20 @@ export async function fetchPriceHistory(
 
 export function generateMockHistory(ticker: string, points: number, lastPrice?: number) {
   const base = lastPrice || 100
-  let price = base * 0.92
   const now = Date.now()
   const msPerPoint = (30 * 24 * 3600 * 1000) / points
+  
+  // Smoother trend generation (Brownian motion style)
+  let currentPrice = base * 0.98
   return Array.from({ length: points }, (_, i) => {
-    price = Math.max(price * (1 + (Math.random() - 0.47) * 0.022), base * 0.7)
+    // Smaller random factor for smoother lines (0.005 instead of 0.022)
+    const drift = 0.0001
+    const volatility = 0.008
+    currentPrice = currentPrice * (1 + drift + (Math.random() - 0.5) * volatility)
+    
     return {
       timestamp: new Date(now - (points - i) * msPerPoint).toISOString(),
-      price: Math.round(price * 100) / 100,
+      price: Math.round(currentPrice * 100) / 100,
     }
   })
 }
