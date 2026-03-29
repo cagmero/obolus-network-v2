@@ -1,4 +1,4 @@
-import { fetchStockPrices, UNDERLYING_TICKERS, FALLBACK_STOCK_PRICES } from './twelvedata'
+import { fetchStockPrices, UNDERLYING_TICKERS } from './twelvedata'
 import { getAllSValues } from './ondoOracle'
 
 export interface TokenPrice {
@@ -9,7 +9,7 @@ export interface TokenPrice {
   change: number          // 24h price change in USD
   changePercent: number   // 24h price change in %
   isMarketOpen: boolean   // NYSE market hours
-  source: 'ondo+twelve_data' | 'twelve_data_only' | 'fallback'
+  source: 'ondo+twelve_data' | 'twelve_data_only' | 'coingecko' | 'fallback'
 }
 
 // All 11 token symbols
@@ -30,7 +30,7 @@ export async function getAllTokenPrices(): Promise<Record<string, TokenPrice>> {
   ALL_SYMBOLS.forEach(symbol => {
     const ticker = UNDERLYING_TICKERS[symbol]
     const stock = stockPrices[ticker]
-    const stockPrice = stock?.price || FALLBACK_STOCK_PRICES[ticker] || 0
+    const stockPrice = stock?.price || 0
 
     if (ONDO_SYMBOLS.includes(symbol)) {
       const sValueData = sValues[symbol] || { sValue: 1.0, paused: false }
@@ -45,8 +45,8 @@ export async function getAllTokenPrices(): Promise<Record<string, TokenPrice>> {
         change: stock ? Math.round(stock.change * sValueData.sValue * 100) / 100 : 0,
         changePercent: stock?.changePercent || 0,
         isMarketOpen: stock?.isMarketOpen || false,
-        // Source depends on whether sValue address is real or placeholder
-        source: sValueData.sValue !== 1.0 ? 'ondo+twelve_data' : 'twelve_data_only',
+        // Source depends on sValue and whether we got stock data from Twelve Data or CoinGecko
+        source: sValueData.sValue !== 1.0 ? 'ondo+twelve_data' : (stock?.price ? 'twelve_data_only' : 'coingecko'),
       }
     } else {
       // Non-Ondo mock tokens — just the stock price directly
@@ -58,7 +58,7 @@ export async function getAllTokenPrices(): Promise<Record<string, TokenPrice>> {
         change: stock?.change || 0,
         changePercent: stock?.changePercent || 0,
         isMarketOpen: stock?.isMarketOpen || false,
-        source: stock?.price ? 'twelve_data_only' : 'fallback',
+        source: stock?.price ? 'twelve_data_only' : 'coingecko',
       }
     }
   })
@@ -70,7 +70,7 @@ export async function getSingleTokenPrice(symbol: string): Promise<TokenPrice> {
   const all = await getAllTokenPrices()
   const ticker = UNDERLYING_TICKERS[symbol] || 'TSLA'
   return all[symbol] || {
-    price: FALLBACK_STOCK_PRICES[ticker] || 0,
+    price: 0,
     stockPrice: 0, sValue: 1.0, paused: false,
     change: 0, changePercent: 0, isMarketOpen: false,
     source: 'fallback'

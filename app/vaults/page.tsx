@@ -190,7 +190,7 @@ function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: b
                   ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
                   : "bg-amber-500/10 text-amber-500 border-amber-500/20"
             )}>
-              {data?.source === 'ondo+twelve_data' ? "ONDO+LIVE" : data?.source === 'twelve_data_only' ? "LIVE" : "MOCK"}
+              {data?.source === 'ondo+twelve_data' ? "ONDO+LIVE" : data?.source === 'twelve_data_only' ? "LIVE" : "COINGECKO"}
             </div>
             {data?.paused && (
               <div className="text-[7px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1 py-0.5 rounded-sm font-black tracking-tighter">⚠ PAUSED</div>
@@ -199,7 +199,7 @@ function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: b
       </td>
       <td className="px-6 py-5">
          <div className="flex flex-col">
-            <span className="text-sm font-black text-green-500">{vault.mockAPY}%</span>
+            <span className="text-sm font-black text-green-500">{vault.baseApy}%</span>
             <span className="text-[9px] text-foreground/20 uppercase font-black">Perf_Fee: 0%</span>
          </div>
       </td>

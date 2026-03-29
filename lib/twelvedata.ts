@@ -16,6 +16,21 @@ if (typeof window !== 'undefined') {
   setInterval(() => KEYS.forEach(k => keyUsage[k] = 0), 3_600_000)
 }
 
+// Maps our token symbols to CoinGecko IDs for reliable fallback/real prices
+export const COINGECKO_IDS: Record<string, string> = {
+  TSLAon: 'tesla-ondo-tokenized-stock',
+  NVDAon: 'nvidia-ondo-tokenized-stock',
+  SPYon:  'ishares-core-s-p-500-etf-ondo-tokenized-etf',
+  QQQon:  'invesco-qqq-etf-ondo-tokenized-etf',
+  AMZNon: 'amazon-ondo-tokenized-stock',
+  MUon:   'micron-technology-ondo-tokenized-stock',
+  TSLAx:  'tesla-xstock',
+  AAPLx:  'apple-xstock',
+  GOOGLx: 'alphabet-class-a-ondo-tokenized-stock',
+  SPYx:   'sp500-xstock',
+  CRCLX:  'usd-coin', // Mirroring USDC as a proxy for Circle mock
+}
+
 // Maps our token symbols to real stock tickers
 export const UNDERLYING_TICKERS: Record<string, string> = {
   TSLAon: 'TSLA', NVDAon: 'NVDA', SPYon: 'SPY',
@@ -24,10 +39,28 @@ export const UNDERLYING_TICKERS: Record<string, string> = {
   SPYx: 'SPY', CRCLX: 'CRCL',
 }
 
-export const FALLBACK_STOCK_PRICES: Record<string, number> = {
-  TSLA: 245.30, NVDA: 890.50, SPY: 512.80,
-  QQQ: 432.10, AMZN: 198.70, MU: 89.40,
-  AAPL: 189.50, GOOGL: 178.20, CRCL: 22.40,
+// Fetch real prices from CoinGecko as a robust fallback/primary source
+export async function fetchCoinGeckoPrices(symbols: string[]): Promise<Record<string, number>> {
+  const ids = symbols.map(s => COINGECKO_IDS[s]).filter(Boolean)
+  if (ids.length === 0) return {}
+  
+  try {
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+    const data = await res.json()
+    
+    const prices: Record<string, number> = {}
+    symbols.forEach(symbol => {
+      const id = COINGECKO_IDS[symbol]
+      if (data[id]) {
+        prices[symbol] = data[id].usd
+      }
+    })
+    return prices
+  } catch (e) {
+    console.warn('CoinGecko fetch failed:', e)
+    return {}
+  }
 }
 
 // Batch fetch underlying stock prices — 1 API call for all tickers
@@ -60,21 +93,49 @@ export async function fetchStockPrices(tickers: string[]): Promise<
           changePercent: Math.round(((price - prev) / prev) * 10000) / 100,
           isMarketOpen: d.is_market_open === true,
         }
-      } else {
-        result[ticker] = {
-          price: FALLBACK_STOCK_PRICES[ticker] || 0,
-          change: 0,
-          changePercent: 0,
-          isMarketOpen: false,
-        }
       }
     })
+
+    // If some tickers failed or Twelve Data failed entirely, try CoinGecko as fallback
+    const symbolsToFetch = Object.keys(UNDERLYING_TICKERS).filter(s => {
+      const ticker = UNDERLYING_TICKERS[s]
+      return !result[ticker] || result[ticker].price === 0
+    })
+
+    if (symbolsToFetch.length > 0) {
+      const cgPrices = await fetchCoinGeckoPrices(symbolsToFetch)
+      symbolsToFetch.forEach(symbol => {
+        const ticker = UNDERLYING_TICKERS[symbol]
+        if (cgPrices[symbol] && (!result[ticker] || result[ticker].price === 0)) {
+          result[ticker] = {
+            price: cgPrices[symbol],
+            change: 0,
+            changePercent: 0,
+            isMarketOpen: false,
+          }
+        }
+      })
+    }
+    
+    // Last resort for anything still missing: check any other symbol that might map to this ticker
+    uniqueTickers.forEach(ticker => {
+        if (!result[ticker]) {
+            result[ticker] = { price: 0, change: 0, changePercent: 0, isMarketOpen: false }
+        }
+    })
+
     return result
   } catch {
+    // If Twelve Data fails, try CoinGecko for everything
+    const allSymbols = Object.keys(UNDERLYING_TICKERS)
+    const cgPrices = await fetchCoinGeckoPrices(allSymbols)
     const fallback: Record<string, any> = {}
+    
     uniqueTickers.forEach(t => {
+      const symbol = allSymbols.find(s => UNDERLYING_TICKERS[s] === t)
+      const price = symbol ? cgPrices[symbol] : 0
       fallback[t] = {
-        price: FALLBACK_STOCK_PRICES[t] || 0,
+        price: price || 0,
         change: 0, changePercent: 0, isMarketOpen: false
       }
     })
@@ -101,12 +162,19 @@ export async function fetchPriceHistory(
       price: parseFloat(v.close),
     }))
   } catch {
-    return generateMockHistory(ticker, outputsize)
+    // If Twelve Data history fails, try to get current price from CoinGecko at least
+    const symbol = Object.keys(UNDERLYING_TICKERS).find(s => UNDERLYING_TICKERS[s] === ticker)
+    let currentPrice = 0
+    if (symbol) {
+        const prices = await fetchCoinGeckoPrices([symbol])
+        currentPrice = prices[symbol] || 0
+    }
+    return generateMockHistory(ticker, outputsize, currentPrice)
   }
 }
 
-export function generateMockHistory(ticker: string, points: number) {
-  const base = FALLBACK_STOCK_PRICES[ticker] || 100
+export function generateMockHistory(ticker: string, points: number, lastPrice?: number) {
+  const base = lastPrice || 100
   let price = base * 0.92
   const now = Date.now()
   const msPerPoint = (30 * 24 * 3600 * 1000) / points

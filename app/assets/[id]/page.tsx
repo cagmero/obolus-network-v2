@@ -23,8 +23,8 @@ export default function AssetPage() {
   const [timeRange, setTimeRange] = useState('1M')
   const [activeTab, setActiveTab] = useState<'DEPOSIT' | 'WITHDRAW'>('DEPOSIT')
   
-  const { data: priceData, isLoading } = useTokenPrice(symbolKey)
-  const { data: history, isLoading: historyLoading } = usePriceHistory(symbolKey, timeRange)
+  const { data: priceData, isLoading: priceLoading } = useTokenPrice(vault?.symbol || "")
+  const { data: history, isLoading: historyLoading } = usePriceHistory(vault?.symbol || "", timeRange)
   
   if (!vault) {
     return <div className="p-20 text-center font-mono uppercase text-xs font-black">ASSET_NOT_FOUND // ERROR_404</div>
@@ -78,10 +78,13 @@ export default function AssetPage() {
                       {priceData?.source === 'twelve_data_only' && (
                         <span className="text-blue-300">TWELVE_DATA // LIVE</span>
                       )}
-                      {priceData?.source === 'fallback' && (
-                        <span className="text-yellow-300">MOCK_PRICE // FALLBACK</span>
-                      )}
-                    </span>
+                    {priceData?.source === 'coingecko' && (
+                      <span className="text-yellow-300 font-bold uppercase">COINGECKO // LIVE_FEED</span>
+                    )}
+                    {priceData?.source === 'fallback' && (
+                      <span className="text-red-400 font-bold uppercase">SYSTEM_FALLBACK // UNKNOWN</span>
+                    )}
+                  </span>
                     
                     {priceData?.sValue !== 1.0 && priceData?.sValue && (
                       <div className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">
@@ -103,7 +106,7 @@ export default function AssetPage() {
               <div className="text-4xl font-black tracking-tighter text-foreground tabular-nums">
                 {priceData?.price
                   ? `$${priceData.price.toFixed(2)}`
-                  : isLoading ? 'LOADING...' : '$---'}
+                  : priceLoading ? 'LOADING...' : '$---'}
               </div>
               <div className={cn("text-[11px] font-black tracking-widest uppercase flex items-center justify-end gap-1.5", isUp ? "text-green-500" : "text-red-500")}>
                 {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -152,7 +155,7 @@ export default function AssetPage() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-[9px] font-black text-foreground/30 uppercase tracking-widest">Oracle System</p>
-                    <p className="text-xs font-bold text-foreground uppercase">{priceData?.source === 'ondo+twelve_data' ? "Ondo_Synthetic" : "Obolus_Mock"}</p>
+                    <p className="text-xs font-bold text-foreground uppercase">{priceData?.source === 'ondo+twelve_data' ? "Ondo_Synthetic" : (priceData?.source === 'coingecko' ? "CoinGecko_Live" : "Twelve_Data")}</p>
                   </div>
                </div>
             </div>

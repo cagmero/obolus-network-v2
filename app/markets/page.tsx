@@ -121,7 +121,7 @@ export default function MarketsPage() {
                               ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
                               : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                         )}>
-                          {data?.source === 'ondo+twelve_data' ? "ONDO+LIVE" : data?.source === 'twelve_data_only' ? "LIVE" : "MOCK"}
+                          {data?.source === 'ondo+twelve_data' ? "ONDO+LIVE" : data?.source === 'twelve_data_only' ? "LIVE" : "COINGECKO"}
                         </div>
                       </td>
                       <td className={cn("px-6 py-5 text-[11px] font-bold tabular-nums", isPositive ? "text-green-500" : "text-red-500")}>

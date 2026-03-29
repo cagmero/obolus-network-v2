@@ -22,6 +22,7 @@ import { Slider } from "@/components/ui/slider"
 import { getVaultById } from "@/lib/vaults"
 import { useVaultDeposit, useVaultWithdraw } from "@/hooks/useVaults"
 import { cn } from "@/lib/utils"
+import { useTokenPrice, usePriceHistory } from "@/hooks/useMarketData"
 import { 
   LineChart, 
   Line, 
@@ -47,21 +48,24 @@ export default function VaultDetailPage() {
   const { execute: handleDeposit } = useVaultDeposit()
   const { execute: handleWithdraw } = useVaultWithdraw()
 
-  // Mock chart data
+  const { data: priceData, isLoading: priceLoading } = useTokenPrice(vault?.symbol || "")
+  const [timeRange, setTimeRange] = useState('1M')
+  const { data: historyData, isLoading: historyLoading } = usePriceHistory(vault?.symbol || "", timeRange)
+
+  const currentPrice = priceData?.price
+  const change = priceData?.changePercent || 0
+
+  // Chart data from real history
   const chartData = useMemo(() => {
-    if (!vault) return []
-    const basePrice = vault.mockPrice
-    return Array.from({ length: 30 }).map((_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (30 - i))
-      return {
-        name: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        price: basePrice * (1 + (Math.random() * 0.1 - 0.05)),
-        apy: vault.mockAPY * (1 + (Math.random() * 0.2 - 0.1)),
-        tvl: Math.random() * 1000000 + 500000
-      }
-    })
-  }, [vault])
+    if (!historyData || !vault) return []
+    return historyData.map(h => ({
+      name: new Date(h.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      price: h.price,
+      // For APY/TVL tabs, we still simulate slightly or use base values
+      apy: vault.baseApy * (1 + (Math.random() * 0.05)),
+      tvl: vault.tvl * (1 + (Math.random() * 0.02))
+    }))
+  }, [historyData, vault])
 
   if (!vault) {
     return (
@@ -98,9 +102,24 @@ export default function VaultDetailPage() {
                     {vault.name} // <span className="text-foreground/40">{vault.symbol}</span>
                   </h1>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    <Badge label="CHAIN: BSC_TESTNET" />
+                    <Badge label={`CHAIN: ${priceData?.source === 'ondo+twelve_data' ? 'BSC_MAINNET' : 'LOCAL_TESTNET'}`} />
                     <Badge label="PLATFORM: OBOLUS_VAULT" />
                     <Badge label="PRIVACY: fhEVM_ENCRYPTED" />
+                    {priceData?.source && (
+                      <div className={cn(
+                        "px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-[0.15em] border",
+                        priceData.source === 'ondo+twelve_data' ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                        priceData.source === 'twelve_data_only' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                        "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                      )}>
+                        SOURCE: {priceData.source.replace('_', ' ')}
+                      </div>
+                    )}
+                    {priceData?.paused && (
+                       <div className="px-2.5 py-1 rounded-md bg-amber-500 text-black text-[9px] font-black uppercase tracking-widest animate-pulse">
+                         ⚠ CORPORATE_ACTION_PENDING
+                       </div>
+                    )}
                   </div>
                </div>
             </div>
@@ -108,9 +127,9 @@ export default function VaultDetailPage() {
 
           {/* Stats Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="TVL" value={`$${(chartData[chartData.length-1]?.tvl / 1000).toFixed(1)}K`} subValue="TOTAL_LOCKED" />
-            <StatCard label="APY" value={`${vault.mockAPY}%`} subValue="CURRENT_YIELD" color="text-green-500" />
-            <StatCard label="DAILY" value={`${vault.mockDailyAPY}%`} subValue="DAILY_RATE" />
+            <StatCard label="TVL" value={`$${(vault.tvl / 1000000).toFixed(2)}M`} subValue="TOTAL_LOCKED" />
+            <StatCard label="APY" value={`${vault.baseApy}%`} subValue="CURRENT_YIELD" color="text-green-500" />
+            <StatCard label="LIVE_PRICE" value={currentPrice ? `$${currentPrice.toFixed(2)}` : 'FETCHING...'} subValue="PER_GM_TOKEN" />
           </div>
 
           {/* User Specific Stats */}
@@ -161,8 +180,17 @@ export default function VaultDetailPage() {
                 HISTORICAL_RATE
               </h3>
               <div className="flex gap-1">
-                {['APY', 'TVL', 'PRICE'].map((tab) => (
-                  <button key={tab} className="px-3 py-1 text-[9px] font-black uppercase tracking-widest border border-border/20 rounded-md hover:bg-primary/10 hover:border-primary/20 transition-all text-foreground/60">
+                {['1D', '1W', '1M', '3M', 'ALL'].map((tab) => (
+                  <button 
+                    key={tab} 
+                    onClick={() => setTimeRange(tab)}
+                    className={cn(
+                      "px-3 py-1 text-[9px] font-black uppercase tracking-widest border rounded-md transition-all",
+                      timeRange === tab 
+                        ? "bg-primary text-primary-foreground border-primary" 
+                        : "border-border/20 text-foreground/40 hover:bg-white/5"
+                    )}
+                  >
                     {tab}
                   </button>
                 ))}
