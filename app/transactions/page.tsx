@@ -17,15 +17,25 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useRecentTransactions } from "@/hooks/useVaults"
+import { TerminalLoader } from "@/components/terminal-loader"
+
+interface Transaction {
+  type: "DEPOSIT" | "WITHDRAWAL" | "REVEAL" | "REBALANCE"
+  vaultId: string
+  status: string
+  timestamp: number
+  encryptedAmount?: boolean
+  amount?: string
+}
 
 export default function TransactionsPage() {
-  const transactions = [
-    { type: "VAULT_DEPOSIT", asset: "NVDAon", amount: "ENCRYPTED", date: "2M AGO", status: "CONFIRMED" },
-    { type: "VAULT_WITHDRAW", asset: "TSLAon", amount: "ENCRYPTED", date: "1H AGO", status: "CONFIRMED" },
-    { type: "BALANCE_REVEAL", asset: "SYS_CALL", amount: "VAULT_v1", date: "4H AGO", status: "COMPLETED" },
-    { type: "POSITION_UPDATE", asset: "SPYon", amount: "ENCRYPTED", date: "1D AGO", status: "CONFIRMED" },
-    { type: "VAULT_DEPOSIT", asset: "QQQon", amount: "ENCRYPTED", date: "2D AGO", status: "CONFIRMED" },
-  ]
+  const { data: transactionsData, isLoading } = useRecentTransactions(20)
+  const transactions = (transactionsData?.transactions || []) as Transaction[]
+
+  if (isLoading) {
+    return <TerminalLoader />
+  }
 
   return (
     <ConnectGate>
@@ -45,7 +55,7 @@ export default function TransactionsPage() {
           <div className="glass-card rounded-2xl p-8 border-l-4 border-l-primary/40 relative overflow-hidden group">
             <p className="text-foreground/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Total Volume</p>
             <div className="flex items-baseline gap-2">
-              <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">14</h1>
+              <h1 className="text-white text-5xl font-black tracking-tighter tabular-nums">{transactions.length}</h1>
               <span className="text-primary font-bold text-xs tracking-widest uppercase">TXS</span>
             </div>
             <History className="absolute -bottom-2 -right-2 w-16 h-16 text-primary/5 group-hover:text-primary/10 transition-colors" />
@@ -87,41 +97,47 @@ export default function TransactionsPage() {
           </div>
           
           <div className="flex flex-col gap-3">
-            {transactions.map((t, i) => (
-              <div
-                key={i}
-                className="glass-card rounded-xl p-6 flex items-center justify-between hover:bg-white/[0.04] transition-all group cursor-pointer border-l-2 border-l-white/10 hover:border-l-primary"
-              >
-                <div className="flex items-center gap-6">
-                  <div className="size-12 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-primary transition-colors border border-white/5">
-                    {t.type === "VAULT_DEPOSIT" && <Zap className="w-5 h-5" />}
-                    {t.type === "VAULT_WITHDRAW" && <ArrowDownLeft className="w-5 h-5" />}
-                    {t.type === "BALANCE_REVEAL" && <Eye className="w-5 h-5" />}
-                    {t.type === "POSITION_UPDATE" && <Lock className="w-5 h-5" />}
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-white font-black block leading-tight tracking-wider uppercase text-sm">{t.type}</span>
-                    <span className="text-foreground/40 text-[10px] font-bold uppercase tracking-[0.2em]">
-                      Asset: {t.asset} // {t.status}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-12">
-                   <div className="hidden md:flex flex-col text-right">
-                      <span className="text-foreground/30 text-[9px] font-black uppercase tracking-widest">Timestamp</span>
-                      <span className="text-white font-bold text-[10px] uppercase tracking-tighter">{t.date}</span>
-                   </div>
-                   <div className="text-right min-w-[120px]">
-                      <span className={cn("font-black text-xl tabular-nums tracking-tighter", t.amount === "ENCRYPTED" ? "text-primary/70" : "text-white")}>
-                         {t.amount}
-                      </span>
-                      <span className="text-white/20 text-[9px] font-bold ml-2 uppercase tracking-widest">STATE</span>
-                   </div>
-                   <ChevronRight className="size-4 text-white/10 group-hover:text-primary/50 transition-colors" />
-                </div>
+            {transactions.length === 0 ? (
+              <div className="glass-card rounded-xl p-12 text-center border-dashed border-white/10">
+                <p className="text-foreground/30 font-black text-xs uppercase tracking-widest">No transactions found on-chain</p>
               </div>
-            ))}
+            ) : (
+              transactions.map((t: any, i: number) => (
+                <div
+                  key={i}
+                  className="glass-card rounded-xl p-6 flex items-center justify-between hover:bg-white/[0.04] transition-all group cursor-pointer border-l-2 border-l-white/10 hover:border-l-primary"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="size-12 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-primary transition-colors border border-white/5">
+                      {t.type === "DEPOSIT" && <Zap className="w-5 h-5" />}
+                      {t.type === "WITHDRAWAL" && <ArrowDownLeft className="w-5 h-5" />}
+                      {t.type === "REVEAL" && <Eye className="w-5 h-5" />}
+                      {t.type === "REBALANCE" && <Lock className="w-5 h-5" />}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-white font-black block leading-tight tracking-wider uppercase text-sm">{t.type}</span>
+                      <span className="text-foreground/40 text-[10px] font-bold uppercase tracking-[0.2em]">
+                        Asset: {t.vaultId || "N/A"} // {t.status || "CONFIRMED"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-12">
+                    <div className="hidden md:flex flex-col text-right">
+                        <span className="text-foreground/30 text-[9px] font-black uppercase tracking-widest">Timestamp</span>
+                        <span className="text-white font-bold text-[10px] uppercase tracking-tighter">{new Date(t.timestamp || Date.now()).toLocaleDateString()}</span>
+                    </div>
+                    <div className="text-right min-w-[120px]">
+                        <span className={cn("font-black text-xl tabular-nums tracking-tighter", t.encryptedAmount ? "text-primary/70" : "text-white")}>
+                          {t.encryptedAmount ? "ENCRYPTED" : t.amount || "0.00"}
+                        </span>
+                        <span className="text-white/20 text-[9px] font-bold ml-2 uppercase tracking-widest">STATE</span>
+                    </div>
+                    <ChevronRight className="size-4 text-white/10 group-hover:text-primary/50 transition-colors" />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 

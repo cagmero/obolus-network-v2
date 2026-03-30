@@ -16,7 +16,7 @@ export const zamaDevnet = defineChain({
 export const config = getDefaultConfig({
   appName: 'Obolus Network',
   projectId: '1745eedb32cb0f103490b50b14761c85',
-  chains: [localhost, zamaDevnet, bsc, bscTestnet],
+  chains: [localhost, bsc, bscTestnet],
   ssr: true,
   storage: createStorage({
     storage: cookieStorage

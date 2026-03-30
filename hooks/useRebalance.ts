@@ -1,113 +1,79 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useAccount, useSignTypedData } from "wagmi"
-import { encryptPosition } from "@/lib/encryption"
-import { OBOLUS_CONTRACTS } from "@/lib/wagmi"
-
-export interface Trade {
-  symbol: string
-  side: "BUY" | "SELL"
-  percentage: number
-}
-
-const SERVER_URL = "http://localhost:3001"
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAccount } from 'wagmi'
+import { api } from '@/lib/api'
+import { useObolusAuth } from './useVaults'
 
 /**
- * Computes trades needed to reach target allocation.
- */
-export function useRebalancePreview(
-  currentAlloc: Record<string, number>,
-  targetAlloc: Record<string, number>
-) {
-  return useMemo(() => {
-    const trades: Trade[] = []
-    
-    // Calculate differences
-    for (const symbol in targetAlloc) {
-      const diff = targetAlloc[symbol] - (currentAlloc[symbol] || 0)
-      if (Math.abs(diff) > 0.01) { // 0.01% threshold
-        trades.push({
-          symbol,
-          side: diff > 0 ? "BUY" : "SELL",
-          percentage: Math.abs(diff)
-        })
-      }
-    }
-    
-    return trades
-  }, [currentAlloc, targetAlloc])
-}
-
-/**
- * Submits the encrypted rebalance intent to the server.
+ * Hook for submitting a rebalance job to the Obolus Server.
  */
 export function useSubmitRebalance() {
-  const { address, chainId } = useAccount()
-  const { signTypedDataAsync: signTypedData } = useSignTypedData()
-  const [loading, setLoading] = useState(false)
+  const { address } = useAccount()
+  const { getSignature } = useObolusAuth()
+  const queryClient = useQueryClient()
 
-  const execute = async (trades: Trade[]) => {
-    if (!address || !chainId) throw new Error("WALLET_NOT_CONNECTED")
-    setLoading(true)
+  return useMutation({
+    mutationFn: async ({ targetAllocation, strategy }: { targetAllocation: Record<string, number>, strategy: string }) => {
+      if (!address) throw new Error("WALLET_NOT_CONNECTED")
 
-    try {
-      // 1. Encrypt rebalance intent
-      // We encrypt the entire trades array as a JSON string
-      const encryptedIntent = await encryptPosition(trades as any)
-      const timestamp = Math.floor(Date.now() / 1000)
+      const { signature, nonce } = await getSignature()
 
-      // 2. Sign EIP-712 Intent
-      const domain = {
-        name: "ObolusNetwork",
-        version: "0.0.1",
-        chainId,
-        verifyingContract: OBOLUS_CONTRACTS.RWAVault.address,
-      }
-
-      const types = {
-        "Submit Rebalance": [
-          { name: "account", type: "address" },
-          { name: "encryptedIntent", type: "string" },
-          { name: "timestamp", type: "uint256" },
-        ],
-      }
-
-      const message = {
-        account: address,
-        encryptedIntent,
-        timestamp: BigInt(timestamp),
-      }
-
-      const auth = await signTypedData({
-        domain,
-        types,
-        primaryType: "Submit Rebalance",
-        message
-      })
-
-      // 3. Post to server
-      const res = await fetch(`${SERVER_URL}/api/v1/intent/rebalance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          account: address,
-          encryptedIntent,
-          timestamp,
-          auth
-        })
-      })
-
-      if (!res.ok) throw new Error("SERVER_ERROR // REBALANCE_FAILED")
-      
-      setLoading(false)
-      return { success: true }
-    } catch (err) {
-      console.error(err)
-      setLoading(false)
-      throw err
+      return api.post('/api/v1/rebalance/submit', {
+        userAddress: address,
+        targetAllocation,
+        strategy
+      }, { walletAddress: address, signature, nonce })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rebalance-history', address] })
     }
-  }
+  })
+}
 
-  return { execute, loading }
+/**
+ * Hook for fetching rebalance history.
+ */
+export function useRebalanceHistory(limit: number = 10) {
+  const { address } = useAccount()
+  return useQuery({
+    queryKey: ['rebalance-history', address, limit],
+    queryFn: () => api.get<{ jobs: any[] }>(`/api/v1/rebalance/history/${address}?limit=${limit}`, { walletAddress: address }),
+    enabled: !!address,
+  })
+}
+
+/**
+ * Hook for fetching the status of a specific rebalance job.
+ */
+export function useRebalanceStatus(jobId: string) {
+  return useQuery({
+    queryKey: ['rebalance-status', jobId],
+    queryFn: () => api.get<{ job: any }>(`/api/v1/rebalance/status/${jobId}`),
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.job?.status
+      return (status === 'pending' || status === 'processing') ? 3000 : false
+    }
+  })
+}
+/**
+ * Helper hook to calculate rebalance trades.
+ */
+export function useRebalancePreview(current: Record<string, number>, target: Record<string, number>) {
+  const symbols = Object.keys(current);
+  const trades: { symbol: string; side: 'BUY' | 'SELL'; percentage: number }[] = [];
+
+  symbols.forEach(symbol => {
+    const diff = target[symbol] - current[symbol];
+    if (Math.abs(diff) > 0.1) {
+      trades.push({
+        symbol,
+        side: diff > 0 ? 'BUY' : 'SELL',
+        percentage: Math.abs(diff)
+      });
+    }
+  });
+
+  return trades;
 }

@@ -50,19 +50,21 @@ export async function getOndoSValue(
     return { sValue: DEFAULT_SVALUES[symbol] || 1.0, paused: false, raw: BigInt(1e18) }
   }
   try {
+    console.log(`[OBOLUS:ONDO_ORACLE] Reading sValue for ${symbol} at ${address}`)
     const [sValue, paused] = await BSC_CLIENT.readContract({
       address: SYNTHETIC_SHARES_ORACLE,
       abi: ORACLE_ABI,
       functionName: 'getSValue',
       args: [address],
     })
+    console.log(`[OBOLUS:ONDO_ORACLE] sValue: ${Number(sValue) / 1e18} paused: ${paused} for ${symbol}`)
     return {
       sValue: Number(sValue) / 1e18,
       paused,
       raw: sValue,
     }
-  } catch (e) {
-    console.warn(`Ondo oracle read failed for ${symbol}:`, e)
+  } catch (e: any) {
+    console.warn(`[OBOLUS:ONDO_ORACLE:WARN] Ondo oracle read failed for ${symbol}:`, e.message)
     return { sValue: DEFAULT_SVALUES[symbol] || 1.0, paused: false, raw: BigInt(1e18) }
   }
 }
@@ -70,6 +72,7 @@ export async function getOndoSValue(
 // Batch fetch sValues for all Ondo GM tokens
 export async function getAllSValues(): Promise<Record<string, SValueResult>> {
   const symbols = Object.keys(ONDO_GM_BSC_ADDRESSES)
+  console.log('[OBOLUS:ONDO_ORACLE] Batch fetching sValues for', symbols)
   const addresses = symbols.map(s => ONDO_GM_BSC_ADDRESSES[s])
 
   // Split into real addresses and placeholders

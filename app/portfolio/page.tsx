@@ -20,18 +20,21 @@ import {
 } from "lucide-react"
 import { GM_TOKENS } from "@/lib/constants"
 import { useAccount } from "wagmi"
-import { usePortfolioPositions, useVaultBalance, usePortfolioNAV, useGMTokenPrices, usePerformanceData, DEMO_MODE } from "@/hooks/useVaults"
-import { useRebalancePreview, useSubmitRebalance } from "@/hooks/useRebalance"
-import { useSetStopLoss, useSetDriftTrigger, useSaveAlerts } from "@/hooks/useRiskProtection"
+import { 
+  useUserProfile, 
+  useVaultPositions, 
+  useNAVHistory, 
+  useLatestPrices 
+} from "@/hooks/useVaults"
+import { useSubmitRebalance, useRebalancePreview } from "@/hooks/useRebalance"
+import { useSaveRiskSettings, useRiskSettings } from "@/hooks/useRiskProtection"
 import { formatUnits, parseUnits } from "viem"
 import { TerminalLoader } from "@/components/terminal-loader"
-import { TerminalErrorDisplay } from "@/components/terminal-error-display"
 import { useChainId } from "wagmi"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
 
-import { usePortfolioNAVHistory } from "@/hooks/useChartData"
 import NAVChart from "@/components/NAVChart"
 
 export default function PortfolioPage() {
@@ -39,15 +42,21 @@ export default function PortfolioPage() {
   const [decryptedRows, setDecryptedRows] = useState<string[]>([])
   const chainId = useChainId()
 
-  const { data: positions, loading: positionsLoading } = usePortfolioPositions(address)
-  const { data: balance } = useVaultBalance(address)
-  const { data: nav } = usePortfolioNAV()
-  const { data: prices, loading: pricesLoading } = useGMTokenPrices()
-  const { change24h, volatility } = usePerformanceData()
+  const { data: userProfile, isLoading: profileLoading } = useUserProfile()
+  const { data: positionsData, isLoading: positionsLoading } = useVaultPositions()
+  const { data: navData, isLoading: navLoading } = useNAVHistory(30)
+  const { data: pricesData, isLoading: pricesLoading } = useLatestPrices()
 
-  const { data: navHistory, isLoading: navLoading } = usePortfolioNAVHistory(address || '')
+  const positions = positionsData?.positions || []
+  const nav = userProfile?.totalDepositsUSD || "0.00"
+  const prices = pricesData?.prices || {}
+  const navHistory = navData?.snapshots || []
+  
+  // Mock performance data for now
+  const change24h = "+2.4%"
+  const volatility = "12%"
 
-  if (address && (positionsLoading || pricesLoading) && !DEMO_MODE) {
+  if (address && (profileLoading || positionsLoading || pricesLoading)) {
     return <TerminalLoader />
   }
 
@@ -114,9 +123,8 @@ function HoldingsTab({ positions, nav, prices, change24h, volatility, decryptedR
     )
   }
 
-  const mockAllocations: Record<string, number> = {
-    'TSLAx': 30, 'NVDAon': 25, 'SPYx': 20, 'QQQon': 15, 'AAPLx': 10
-  }
+  // Calculate allocations based on current balances
+  const totalValueUSD = parseFloat(nav) || 1 // Avoid division by zero
 
   return (
     <div className="space-y-12">
@@ -153,11 +161,17 @@ function HoldingsTab({ positions, nav, prices, change24h, volatility, decryptedR
             </thead>
             <tbody className="divide-y divide-white/5">
               {Object.entries(GM_TOKENS).map(([key, token]) => {
-                const isDecrypted = DEMO_MODE || decryptedRows.includes(token.symbol)
-                const position = (positions as Record<string, bigint>)[token.symbol] || BigInt(0)
-                const price = (prices as Record<string, bigint>)[token.symbol] || BigInt(0)
-                const value = (position * price) / BigInt("1000000000000000000")
-                const allocation = mockAllocations[token.symbol] || 0
+                const isDecrypted = decryptedRows.includes(token.symbol)
+                const pos = positions.find((p: any) => p.vaultId.toLowerCase() === token.symbol.toLowerCase())
+                
+                // Note: Simplified logic for demo purposes since we don't have actual balance decryption here
+                const balanceStr = pos?.encryptedBalance || "0"
+                const balance = parseFloat(balanceStr)
+                
+                const priceData = prices[token.symbol?.toUpperCase()] || { price: 0 }
+                const price = priceData.price || 0
+                const value = balance * price
+                const allocation = totalValueUSD > 0 ? (value / totalValueUSD) * 100 : 0
 
                 return (
                   <tr key={key} className="group hover:bg-white/[0.02] transition-colors">
@@ -166,18 +180,18 @@ function HoldingsTab({ positions, nav, prices, change24h, volatility, decryptedR
                       <span className="font-bold text-sm">{token.symbol}</span>
                     </td>
                     <td className="px-6 py-4 font-black text-xs tabular-nums tracking-tighter">
-                      {isDecrypted ? formatUnits(position, 18) : "█████████"}
+                      {isDecrypted ? balance.toFixed(4) : "█████████"}
                     </td>
                     <td className="px-6 py-4 text-foreground/50 font-bold text-xs tabular-nums">
-                      ${formatUnits(price, 18)}
+                      ${price.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 font-bold text-xs tabular-nums">
-                      {isDecrypted ? `$${formatUnits(value, 18)}` : "████"}
+                      {isDecrypted ? `$${value.toFixed(2)}` : "████"}
                     </td>
                     <td className="px-6 py-4 w-48">
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-[8px] font-black text-foreground/30 uppercase">
-                          <span>{allocation}%</span>
+                          <span>{allocation.toFixed(1)}%</span>
                         </div>
                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                           <div 
@@ -211,16 +225,23 @@ function HoldingsTab({ positions, nav, prices, change24h, volatility, decryptedR
 
 // ── Tab 2: REBALANCE ─────────────────────────────────────────────────────────
 
-function RebalanceTab({ positions }: any) {
-  const currentAlloc: Record<string, number> = {
-    'TSLAx': 30, 'NVDAon': 25, 'SPYx': 20, 'QQQon': 15, 'AAPLx': 10
-  }
+function RebalanceTab({ positions }: { positions: any[] }) {
+  const currentAlloc: Record<string, number> = useMemo(() => {
+    const alloc: Record<string, number> = {}
+    const total = positions.reduce((acc, p) => acc + parseFloat(p.encryptedBalance || "0"), 0)
+    if (total === 0) return { 'TSLAx': 20, 'NVDAon': 20, 'SPYx': 20, 'QQQon': 20, 'AAPLx': 20 }
+    
+    positions.forEach(p => {
+      alloc[p.vaultId] = (parseFloat(p.encryptedBalance || "0") / total) * 100
+    })
+    return alloc
+  }, [positions])
   
   const [targetAlloc, setTargetAlloc] = useState<Record<string, number>>(currentAlloc)
   const [status, setStatus] = useState<string | null>(null)
   
   const trades = useRebalancePreview(currentAlloc, targetAlloc)
-  const { execute: submitRebalance, loading } = useSubmitRebalance()
+  const { mutateAsync: submitRebalance, isPending: loading } = useSubmitRebalance()
   
   const totalAlloc = Object.values(targetAlloc).reduce((a, b) => a + b, 0)
   const isValid = Math.abs(totalAlloc - 100) < 0.01
@@ -232,14 +253,11 @@ function RebalanceTab({ positions }: any) {
     if (type === 'EQUAL') {
       const weight = Math.floor(100 / symbols.length)
       symbols.forEach(s => newAlloc[s] = weight)
-      // Add remainder to first
       newAlloc[symbols[0]] += (100 - weight * symbols.length)
     } else if (type === 'RISK') {
-      // Mock risk parity
       const weights = [15, 20, 25, 10, 30]
       symbols.forEach((s, i) => newAlloc[s] = weights[i % weights.length])
     } else {
-      // Mock market cap
       const weights = [40, 20, 15, 15, 10]
       symbols.forEach((s, i) => newAlloc[s] = weights[i % weights.length])
     }
@@ -249,7 +267,7 @@ function RebalanceTab({ positions }: any) {
   const handleRebalance = async () => {
     setStatus("ENCRYPTING_REBALANCE_INTENT...")
     try {
-      await submitRebalance(trades)
+      await submitRebalance({ targetAllocation: targetAlloc, strategy: "CUSTOM" })
       setStatus("REBALANCE_SUBMITTED // CRE_WILL_EXECUTE_IN_30S")
       setTimeout(() => setStatus(null), 5000)
     } catch (e) {
@@ -282,7 +300,7 @@ function RebalanceTab({ positions }: any) {
                 <div key={symbol} className="space-y-1">
                   <div className="flex justify-between text-[10px] font-bold">
                     <span className="text-foreground/60">{symbol}</span>
-                    <span className="text-primary">{pct}%</span>
+                    <span className="text-primary">{pct.toFixed(1)}%</span>
                   </div>
                   <div className="flex gap-px">
                      {Array.from({ length: 20 }).map((_, i) => (
@@ -317,7 +335,7 @@ function RebalanceTab({ positions }: any) {
                 "p-3 rounded-lg text-[10px] font-black text-center border uppercase tracking-widest",
                 isValid ? "bg-green-500/10 border-green-500/20 text-green-500" : "bg-red-500/10 border-red-500/20 text-red-500"
               )}>
-                {isValid ? `TOTAL: ${totalAlloc}% // VALID` : `TOTAL: ${totalAlloc}% // NEEDS ${100 - totalAlloc}% ${totalAlloc > 100 ? 'LESS' : 'MORE'}`}
+                {isValid ? `TOTAL: ${totalAlloc.toFixed(1)}% // VALID` : `TOTAL: ${totalAlloc.toFixed(1)}% // NEEDS ${Math.abs(100 - totalAlloc).toFixed(1)}% ${totalAlloc > 100 ? 'LESS' : 'MORE'}`}
               </div>
            </div>
         </div>
@@ -335,10 +353,10 @@ function RebalanceTab({ positions }: any) {
         <div className="glass-card rounded-2xl p-6 border-primary/20 bg-primary/5 space-y-4">
            <h3 className="text-[10px] font-black tracking-widest text-primary uppercase">REBALANCE_PREVIEW</h3>
            <div className="space-y-2">
-             {trades.map((trade, i) => (
+             {trades.map((trade: any, i: number) => (
                <div key={i} className="text-[11px] font-bold flex items-center justify-between border-b border-primary/10 pb-2">
                  <span className={cn(trade.side === 'BUY' ? 'text-green-500' : 'text-red-500')}>
-                    {trade.side} {trade.percentage}% {trade.symbol}
+                    {trade.side} {trade.percentage.toFixed(1)}% {trade.symbol}
                  </span>
                  <span className="text-foreground/20 text-[9px] uppercase tracking-tighter">ENCRYPTED // HIDDEN</span>
                </div>
@@ -385,12 +403,39 @@ function StrategyButton({ label, onClick }: any) {
 // ── Tab 3: RISK_PROTECTION ──────────────────────────────────────────────────
 
 function RiskProtectionTab() {
-  const { execute: setStopLoss } = useSetStopLoss()
-  const { execute: setDrift } = useSetDriftTrigger()
-  const { execute: saveAlerts } = useSaveAlerts()
+  const { data: riskSettings } = useRiskSettings()
+  const { mutateAsync: saveRiskSettings, isPending: saving } = useSaveRiskSettings()
 
   const [driftValue, setDriftValue] = useState(5)
   const [alertSettings, setAlertSettings] = useState({ navBelow: "10000", posAbove: "40", lossAbove: "15" })
+
+  useEffect(() => {
+    if (riskSettings?.settings) {
+      const s = riskSettings.settings
+      setDriftValue(s.driftTrigger || 5)
+      setAlertSettings({
+        navBelow: s.alerts?.navBelow?.toString() || "10000",
+        posAbove: s.alerts?.posAbove?.toString() || "40",
+        lossAbove: s.alerts?.lossAbove?.toString() || "15"
+      })
+    }
+  }, [riskSettings])
+
+  const handleSave = async () => {
+    try {
+      await saveRiskSettings({
+        driftTrigger: driftValue,
+        alerts: {
+          navBelow: parseFloat(alertSettings.navBelow),
+          posAbove: parseFloat(alertSettings.posAbove),
+          lossAbove: parseFloat(alertSettings.lossAbove)
+        },
+        stopLosses: [] // Placeholder
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   return (
     <div className="space-y-10 max-w-5xl mx-auto">
@@ -477,10 +522,11 @@ function RiskProtectionTab() {
               </div>
 
               <Button 
-                onClick={() => setDrift(driftValue)}
+                onClick={handleSave}
+                disabled={saving}
                 className="w-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-[10px] font-black uppercase tracking-widest h-12 rounded-xl"
               >
-                SAVE_TRIGGER_SETTINGS
+                {saving ? "SAVING..." : "SAVE_TRIGGER_SETTINGS"}
               </Button>
            </div>
 
@@ -523,10 +569,11 @@ function RiskProtectionTab() {
               </div>
 
               <Button 
-                onClick={() => saveAlerts(alertSettings)}
+                onClick={handleSave}
+                disabled={saving}
                 className="w-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-[10px] font-black uppercase tracking-widest h-12 rounded-xl"
               >
-                SAVE_ALERTS_CONFIG
+                {saving ? "SAVING..." : "SAVE_ALERTS_CONFIG"}
               </Button>
               
               <div className="text-[8px] text-foreground/30 font-bold text-center uppercase">

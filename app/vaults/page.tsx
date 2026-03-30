@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { useAccount, useReadContract, useChainId } from "wagmi"
 import { formatUnits } from "viem"
 import { useAllPrices } from "@/hooks/useMarketData"
-import { ONDO_GM_BSC_ADDRESSES } from "@/lib/ondoOracle"
+import { usePlatformTVL, useVaultPositions } from "@/hooks/useVaults"
 import Sparkline from "@/components/Sparkline"
 
 const ERC20_ABI = [
@@ -26,13 +26,18 @@ export default function VaultsPage() {
   const [filter, setFilter] = useState<'ALL' | 'MY_POSITIONS' | 'BLUE_CHIPS' | 'TECH' | 'ETF'>('ALL')
   const [search, setSearch] = useState('')
   const chainId = useChainId()
-  const { data: prices, isLoading: pricesLoading } = useAllPrices()
+  const { data: prices } = useAllPrices()
+  const { data: platformTvl } = usePlatformTVL()
+  const { data: positionsData } = useVaultPositions()
+
+  const positions = positionsData?.positions || []
 
   const filteredVaults = VAULTS.filter(vault => {
     const matchesSearch = vault.name.toLowerCase().includes(search.toLowerCase()) || 
                           vault.symbol.toLowerCase().includes(search.toLowerCase())
     
     if (filter === 'ALL') return matchesSearch
+    if (filter === 'MY_POSITIONS') return matchesSearch && positions.some((p: any) => p.vaultId.toLowerCase() === vault.symbol.toLowerCase())
     return matchesSearch && vault.category === filter
   })
 
@@ -51,11 +56,11 @@ export default function VaultsPage() {
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
             <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Active_Vaults</span>
-            <span className="text-xl font-bold text-primary">9</span>
+            <span className="text-xl font-bold text-primary">{VAULTS.length}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Total_TVL</span>
-            <span className="text-xl font-bold text-foreground font-black tabular-nums tracking-tighter">$4.2M</span>
+            <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Total_Users</span>
+            <span className="text-xl font-bold text-foreground font-black tabular-nums tracking-tighter">{platformTvl?.totalPositions || 0}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-[9px] text-foreground/40 font-black uppercase tracking-widest">Avg_APY</span>

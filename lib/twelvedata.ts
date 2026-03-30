@@ -175,15 +175,20 @@ export async function fetchPriceHistory(
     const key = getNextKey()
     if (!key) throw new Error('No API keys available')
     keyUsage[key]++
+    console.log(`[OBOLUS:TWELVE_DATA] Fetching history for ${ticker} interval:${interval} points:${outputsize}`)
     const url = `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=${interval}&outputsize=${outputsize}&apikey=${key}`
     const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
     const data = await res.json()
-    if (data.status === 'error' || !data.values) throw new Error(data.message)
+    if (data.status === 'error' || !data.values) {
+      console.error(`[OBOLUS:TWELVE_DATA:ERROR] History API error for ${ticker}:`, data.message)
+      throw new Error(data.message)
+    }
     return data.values.reverse().map((v: any) => ({
       timestamp: v.datetime,
       price: parseFloat(v.close),
     }))
-  } catch {
+  } catch (e: any) {
+    console.warn(`[OBOLUS:TWELVE_DATA:WARN] History fetch failed for ${ticker}:`, e.message)
     // If Twelve Data history fails, try real history from CoinGecko
     const symbol = Object.keys(UNDERLYING_TICKERS).find(s => UNDERLYING_TICKERS[s] === ticker) || ticker
     const days = interval.includes('day') ? outputsize : (interval.includes('h') ? Math.ceil(outputsize/24) : 7)

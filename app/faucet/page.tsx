@@ -25,32 +25,67 @@ const MOCK_ERC20_ABI = [
   }
 ] as const
 
+import { useObolusAuth } from "@/hooks/useVaults"
+import { api } from "@/lib/api"
+
+import { toast } from "react-toastify"
+
 export default function FaucetPage() {
   const { isConnected, address } = useAccount()
   const { writeContractAsync } = useWriteContract()
+  const { getSignature } = useObolusAuth()
   const [logs, setLogs] = useState<string[]>([])
   const [isMintingAll, setIsMintingAll] = useState(false)
+  const [minting, setMinting] = useState<string | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const chainId = 1337
 
   const addLog = (message: string) => {
     setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev].slice(0, 10))
   }
 
-  const claimToken = async (symbol: string, address_?: string) => {
-    if (!address || !address_) return
+  const handleMint = async (tokenAddress: string, symbol: string) => {
+    if (!address) return
+    
+    console.log('[OBOLUS:FAUCET] Minting tokens', { tokenAddress, symbol, to: address })
 
     try {
-      addLog(`MINTING_${symbol}...`)
-      const tx = await writeContractAsync({
-        address: address_ as `0x${string}`,
+      setMinting(symbol)
+      addLog(`Requesting ${symbol} from faucet...`)
+
+      // 1. Mint on-chain
+      const txHash = await writeContractAsync({
+        address: tokenAddress as `0x${string}`,
         abi: MOCK_ERC20_ABI,
         functionName: 'mint',
         args: [address, parseUnits('1000', 18)],
       })
-      addLog(`TX_CONFIRMED // +1000 ${symbol} // ADDED_TO_WALLET`)
+
+      console.log('[OBOLUS:FAUCET] Mint confirmed', { txHash, symbol, amount: '1000' })
+      addLog(`Transaction submitted: ${txHash.slice(0, 10)}...`)
+      
+      // 2. Record in DB
+      const { signature, nonce } = await getSignature()
+      await api.post('/api/v1/transactions/record', {
+        userAddress: address,
+        type: 'faucet',
+        vaultId: 'FAUCET',
+        tokenAddress,
+        encryptedAmount: "1000",
+        txHash,
+        chainId,
+        status: 'executed'
+      }, { walletAddress: address, signature, nonce })
+
+      addLog(`Successfully minted 1,000 ${symbol}!`)
+      toast.success(`Successfully minted 1,000 ${symbol}!`)
       setRefreshTrigger(prev => prev + 1)
-    } catch (error) {
-      addLog(`ERROR_MINTING_${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } catch (e: any) {
+      console.error('[OBOLUS:FAUCET:ERROR] Mint failed', { symbol, error: e.message })
+      addLog(`Error minting ${symbol}: ${e.message}`)
+      toast.error(`Error minting ${symbol}: ${e.message}`)
+    } finally {
+      setMinting(null)
     }
   }
 
@@ -58,8 +93,8 @@ export default function FaucetPage() {
     setIsMintingAll(true)
     addLog("INITIATING_BULK_MINT...")
     
-    for (const [symbol, addr] of Object.entries(TOKEN_ADDRESSES)) {
-      await claimToken(symbol, addr)
+    for (const vault of VAULTS) {
+      await handleMint(vault.tokenAddress, vault.symbol)
     }
     
     addLog("BULK_MINT_COMPLETE")
@@ -111,7 +146,7 @@ export default function FaucetPage() {
               <TokenCard 
                 key={vault.id} 
                 vault={vault} 
-                onClaim={() => claimToken(vault.symbol, vault.tokenAddress)}
+                onClaim={() => handleMint(vault.tokenAddress, vault.symbol)}
                 refreshTrigger={refreshTrigger}
               />
             ))}

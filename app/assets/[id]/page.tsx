@@ -5,7 +5,7 @@ import { useTokenPrice, usePriceHistory } from "@/hooks/useMarketData"
 import { VAULTS, Vault } from "@/lib/vaults"
 import { ONDO_GM_BSC_ADDRESSES } from "@/lib/ondoOracle"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, TrendingDown, Clock, Shield, Zap, Globe, Activity, ArrowUpRight, ChevronRight, Lock, ChevronDown } from "lucide-react"
+import { TrendingUp, TrendingDown, Clock, Shield, Zap, Globe, Activity, ArrowUpRight, ChevronRight, Lock, ChevronDown, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useMemo } from "react"
@@ -14,18 +14,74 @@ import { useAccount } from "wagmi"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
 import PriceChart from "@/components/PriceChart"
 
+import { useVaultDeposit, useVaultWithdraw, useVaultPositions } from "@/hooks/useVaults"
+import { OBOLUS_CONTRACTS } from "@/lib/wagmi"
+import { formatUnits, parseUnits } from "viem"
+import { TerminalLoader } from "@/components/terminal-loader"
+
 export default function AssetPage() {
   const params = useParams()
   const router = useRouter()
-  const { isConnected } = useAccount()
+  const { isConnected, address } = useAccount()
   const symbolKey = (params.id as string).toUpperCase()
   const vault = VAULTS.find(v => v.symbol.toUpperCase() === symbolKey)
+  
   const [timeRange, setTimeRange] = useState('1M')
   const [activeTab, setActiveTab] = useState<'DEPOSIT' | 'WITHDRAW'>('DEPOSIT')
+  const [amount, setAmount] = useState("")
   
   const { data: priceData, isLoading: priceLoading } = useTokenPrice(vault?.symbol || "")
   const { data: history, isLoading: historyLoading } = usePriceHistory(vault?.symbol || "", timeRange)
   
+  const { data: positionsData } = useVaultPositions()
+  const positions = positionsData?.positions || []
+  const position = positions.find((p: any) => p.vaultId === vault?.symbol)
+  
+  const depositMutation = useVaultDeposit()
+  const withdrawMutation = useVaultWithdraw()
+
+  const handleAction = async () => {
+    if (!vault || !amount) return
+    console.log('[OBOLUS:CONTRACT] Writing contract', { 
+      functionName: activeTab === 'DEPOSIT' ? 'deposit' : 'withdraw', 
+      address: OBOLUS_CONTRACTS.RWAVault.address,
+      args: [vault.tokenAddress, parseUnits(amount, 18).toString()] 
+    })
+
+    try {
+      if (activeTab === 'DEPOSIT') {
+        const txHash = await depositMutation.mutateAsync({
+          tokenAddress: vault.tokenAddress as `0x${string}`,
+          amount,
+          vaultId: vault.symbol
+        })
+        console.log('[OBOLUS:CONTRACT] Transaction confirmed', {
+          txHash,
+          action: 'DEPOSIT',
+          vaultId: vault.symbol
+        })
+      } else {
+        const txHash = await withdrawMutation.mutateAsync({
+          tokenAddress: vault.tokenAddress as `0x${string}`,
+          shares: amount,
+          vaultId: vault.symbol
+        })
+        console.log('[OBOLUS:CONTRACT] Transaction confirmed', {
+          txHash,
+          action: 'WITHDRAW',
+          vaultId: vault.symbol
+        })
+      }
+      setAmount("")
+    } catch (e: any) {
+      console.error('[OBOLUS:CONTRACT:ERROR] Transaction failed', {
+        error: e.message,
+        cause: e.cause,
+        functionName: activeTab === 'DEPOSIT' ? 'deposit' : 'withdraw',
+      })
+    }
+  }
+
   if (!vault) {
     return <div className="p-20 text-center font-mono uppercase text-xs font-black">ASSET_NOT_FOUND // ERROR_404</div>
   }
@@ -226,20 +282,25 @@ export default function AssetPage() {
               {/* Amount Input */}
               <div className="bg-white/5 rounded-2xl p-5 border border-border/20 space-y-4">
                 <div className="flex items-center justify-between text-[9px] font-black text-foreground/30 uppercase tracking-widest px-1">
-                  <span>Spend</span>
-                  <span>Balance: 0.00</span>
+                  <span>{activeTab === 'DEPOSIT' ? 'Spend' : 'Burn Shares'}</span>
+                  <span>
+                    Balance: {activeTab === 'DEPOSIT' ? '0.00' : 'ENCRYPTED'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                    <input 
                      type="number" 
+                     value={amount}
+                     onChange={(e) => setAmount(e.target.value)}
                      placeholder="0.00" 
                      className="bg-transparent text-2xl font-black text-foreground focus:outline-none w-full tabular-nums"
                    />
-                   <button className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-border/20 hover:bg-white/10 transition-colors">
-                      <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-primary">U</div>
-                      <span className="text-xs font-bold">USDT</span>
-                      <ChevronDown className="w-3 h-3 text-foreground/30" />
-                   </button>
+                   <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-border/20">
+                      <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                        {activeTab === 'DEPOSIT' ? 'U' : vault.symbol[0]}
+                      </div>
+                      <span className="text-xs font-bold">{activeTab === 'DEPOSIT' ? 'USDT' : vault.symbol}</span>
+                   </div>
                 </div>
               </div>
 
@@ -256,10 +317,14 @@ export default function AssetPage() {
                   <span>Receive_At_Least</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                   <span className="text-2xl font-black text-foreground/40 tabular-nums">0.00</span>
+                   <span className="text-2xl font-black text-foreground/40 tabular-nums">
+                     {amount || '0.00'}
+                   </span>
                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-xl border border-primary/20">
-                      <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center text-[10px] text-primary-foreground font-black">{vault.symbol[0]}</div>
-                      <span className="text-xs font-bold">{vault.symbol}</span>
+                      <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center text-[10px] text-primary-foreground font-black">
+                        {activeTab === 'DEPOSIT' ? vault.symbol[0] : 'U'}
+                      </div>
+                      <span className="text-xs font-bold">{activeTab === 'DEPOSIT' ? vault.symbol : 'USDT'}</span>
                    </div>
                 </div>
               </div>
@@ -267,9 +332,19 @@ export default function AssetPage() {
               {/* CTA */}
               <div className="pt-4">
                  {isConnected ? (
-                   <Button className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-sm tracking-[0.2em] uppercase rounded-[20px] shadow-2xl shadow-primary/20 group">
-                     {activeTab}_ASSETS
-                     <ArrowUpRight className="w-5 h-5 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                   <Button 
+                    onClick={handleAction}
+                    disabled={!amount || depositMutation.isPending || withdrawMutation.isPending}
+                    className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-sm tracking-[0.2em] uppercase rounded-[20px] shadow-2xl shadow-primary/20 group"
+                   >
+                     {depositMutation.isPending || withdrawMutation.isPending ? (
+                       <Loader2 className="w-5 h-5 animate-spin" />
+                     ) : (
+                       <>
+                         {activeTab}_ASSETS
+                         <ArrowUpRight className="w-5 h-5 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                       </>
+                     )}
                    </Button>
                  ) : (
                    <div className="w-full flex justify-center">

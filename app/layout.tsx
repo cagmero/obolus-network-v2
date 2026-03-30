@@ -8,6 +8,7 @@ import "./globals.css"
 import { AppHeader } from "@/components/header"
 import { AppFooter } from "@/components/footer"
 import { Providers } from "@/components/providers"
+import { WalletConnectHandler } from "@/components/WalletConnectHandler"
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const queryClient = new QueryClient({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <QueryClientProvider client={queryClient}>
           <Suspense fallback={<div>Loading...</div>}>
             <Providers>
+              <WalletConnectHandler />
               <div className="mx-auto w-full flex flex-col min-h-screen px-4 md:px-8 lg:px-12">
                 <AppHeader />
                 <main className="pb-24 flex-grow">{children}</main>
