@@ -1,175 +1,150 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { useAccount, useWriteContract, useBalance, usePublicClient } from "wagmi"
-import { parseUnits } from "viem"
-import { Button } from "@/components/ui/button"
-import { TOKEN_ADDRESSES } from "@/lib/tokenAddresses"
-import { VAULTS } from "@/lib/vaults"
-import { Wallet, Coins, Terminal, CheckCircle2, AlertCircle, Loader2, Globe } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { getKeyUsageStats, getTotalCallsRemaining } from "@/lib/twelvedata"
-import { useReadContract } from "wagmi"
-import { formatUnits } from "viem"
+import { useState, useEffect } from 'react'
+import { Terminal, Globe, CheckCircle2, Copy, ExternalLink, RefreshCw, Smartphone, ShieldCheck, Zap } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useAccount, useChainId, useSwitchChain } from 'wagmi'
+import { useAllTokenBalances, useTokenBalance } from '@/hooks/useContracts'
+import { useMintFaucet } from '@/hooks/useContractWrite'
+import { CONTRACT_ADDRESSES } from '@/lib/wagmi'
+import { cn } from '@/lib/utils'
+import { Metadata } from 'next'
 
-const MOCK_ERC20_ABI = [
-  {
-    "inputs": [
-      { "name": "to", "type": "address" },
-      { "name": "amount", "type": "uint256" }
-    ],
-    "name": "mint",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-] as const
-
-import { useObolusAuth } from "@/hooks/useVaults"
-import { api } from "@/lib/api"
-
-import { toast } from "react-toastify"
-
+// Client-side only component to prevent hydration mismatch
 export default function FaucetPage() {
-  const { isConnected, address } = useAccount()
-  const { writeContractAsync } = useWriteContract()
-  const { getSignature } = useObolusAuth()
+  const { address, isConnected } = useAccount()
+  const chainId = useChainId()
+  const { switchChain } = useSwitchChain()
+  const { balances, isLoading: isLoadingBalances, refetch } = useAllTokenBalances()
+  const { mint, mintAll, mintingSymbol, lastTxHash, error: mintError } = useMintFaucet()
   const [logs, setLogs] = useState<string[]>([])
-  const [isMintingAll, setIsMintingAll] = useState(false)
-  const [minting, setMinting] = useState<string | null>(null)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const chainId = 1337
+  const [isMounted, setIsMounted] = useState(false)
 
-  const addLog = (message: string) => {
-    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev].slice(0, 10))
+  useEffect(() => {
+    setIsMounted(true)
+    addLog('SYSTEM_BOOT // INITIALIZING_FAUCET_PROTOCOL')
+  }, [])
+
+  const addLog = (msg: string) => {
+    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 50))
   }
 
-  const handleMint = async (tokenAddress: string, symbol: string) => {
-    if (!address) return
-    
-    console.log('[OBOLUS:FAUCET] Minting tokens', { tokenAddress, symbol, to: address })
-
+  const handleMint = async (symbol: string, tokenAddress: string) => {
+    if (!address) return addLog('ERROR: WALLET_NOT_CONNECTED')
     try {
-      setMinting(symbol)
-      addLog(`Requesting ${symbol} from faucet...`)
-
-      // 1. Mint on-chain
-      const txHash = await writeContractAsync({
-        address: tokenAddress as `0x${string}`,
-        abi: MOCK_ERC20_ABI,
-        functionName: 'mint',
-        args: [address, parseUnits('1000', 18)],
-      })
-
-      console.log('[OBOLUS:FAUCET] Mint confirmed', { txHash, symbol, amount: '1000' })
-      addLog(`Transaction submitted: ${txHash.slice(0, 10)}...`)
-      
-      // 2. Record in DB
-      const { signature, nonce } = await getSignature()
-      await api.post('/api/v1/transactions/record', {
-        userAddress: address,
-        type: 'faucet',
-        vaultId: 'FAUCET',
-        tokenAddress,
-        encryptedAmount: "1000",
-        txHash,
-        chainId,
-        status: 'executed'
-      }, { walletAddress: address, signature, nonce })
-
-      addLog(`Successfully minted 1,000 ${symbol}!`)
-      toast.success(`Successfully minted 1,000 ${symbol}!`)
-      setRefreshTrigger(prev => prev + 1)
+      addLog(`INITIATING_MINT // ${symbol} // ${tokenAddress}`)
+      const tx = await mint(symbol, tokenAddress)
+      addLog(`TX_SUBMITTED // HASH: ${tx}`)
+      addLog(`MINT_COMPLETE // VIEW_ON_BSCSCAN: https://testnet.bscscan.com/tx/${tx}`)
     } catch (e: any) {
-      console.error('[OBOLUS:FAUCET:ERROR] Mint failed', { symbol, error: e.message })
-      addLog(`Error minting ${symbol}: ${e.message}`)
-      toast.error(`Error minting ${symbol}: ${e.message}`)
-    } finally {
-      setMinting(null)
+      addLog(`MINT_FAILED // ${e.message}`)
     }
   }
 
-  const claimAll = async () => {
-    setIsMintingAll(true)
-    addLog("INITIATING_BULK_MINT...")
-    
-    for (const vault of VAULTS) {
-      await handleMint(vault.tokenAddress, vault.symbol)
-    }
-    
-    addLog("BULK_MINT_COMPLETE")
-    setIsMintingAll(false)
+  const handleMintAll = async () => {
+    addLog('INITIATING_BATCH_MINT // ALL_9_TOKENS')
+    await mintAll()
+    addLog('BATCH_MINT_SEQUENCE_COMPLETE')
+    refetch()
   }
+
+  if (!isMounted) return null
+
+  const isBscTestnet = chainId === 97
 
   return (
-    <div className="flex flex-col gap-8 font-mono pb-20">
-      {/* Header Info */}
-      <div className="flex items-center justify-between border-b border-border/20 pb-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tighter text-foreground">FAUCET // TESTNET_TOKENS</h1>
-          <p className="text-[10px] text-amber-500 font-bold uppercase tracking-[0.2em] mt-1">
-            NETWORK: LOCAL_GANACHE // CHAIN_ID: 1337
+    <div className="max-w-7xl mx-auto space-y-10 py-10 px-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Zap className="w-6 h-6 text-amber-500" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-black tracking-tighter text-foreground uppercase">
+                FAUCET <span className="text-amber-500">//</span> BSC_TESTNET
+              </h1>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-border/20">
+                  <div className={cn("w-1.5 h-1.5 rounded-full", isBscTestnet ? "bg-green-500" : "bg-red-500 animate-pulse")} />
+                  <span className="text-[9px] font-black uppercase tracking-widest text-foreground/40 text-xs">
+                    {isBscTestnet ? "NETWORK_SYNCED // 97" : "WRONG_NETWORK // EXPECTED: 97"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-foreground/60 font-medium max-w-xl leading-relaxed uppercase tracking-tight">
+            Claim testnet assets to interact with the Obolus RWAVault. Each claim dispenses 1,000 mock units. 
+            These tokens represent GM assets on the BSC Testnet deployment.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-           <Button 
-            onClick={claimAll} 
-            disabled={!isConnected || isMintingAll}
-            className="bg-amber-500 hover:bg-amber-600 text-black font-black text-[10px] px-6 rounded-xl h-9"
+
+        {!isBscTestnet && (
+          <Button 
+            onClick={() => switchChain({ chainId: 97 })}
+            className="bg-amber-500 hover:bg-amber-600 text-black font-black text-xs h-12 px-8 rounded-2xl uppercase tracking-widest"
           >
-            {isMintingAll ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : null}
-            CLAIM_ALL_TOKENS
+            Switch to BSC Testnet
           </Button>
-        </div>
+        )}
+
+        {isBscTestnet && (
+           <Button 
+            onClick={handleMintAll}
+            disabled={!!mintingSymbol}
+            className="bg-foreground hover:bg-foreground/90 text-background font-black text-xs h-12 px-8 rounded-2xl uppercase tracking-widest flex items-center gap-2"
+          >
+            {mintingSymbol ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+            {mintingSymbol ? `MINTING_${mintingSymbol}...` : 'Claim All Tokens'}
+          </Button>
+        )}
       </div>
 
-      {/* Explanation Box */}
-      <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 backdrop-blur-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <Terminal className="w-20 h-20" />
-        </div>
-        <div className="relative z-10 space-y-2">
-          <h2 className="text-[10px] font-black tracking-widest text-amber-500 uppercase">SYSTEM_NOTICE // FAUCET_PROTOCOL</h2>
-          <p className="text-xs text-foreground/80 leading-relaxed max-w-2xl">
-            GET FREE TESTNET TOKENS TO TRY THE OBOLUS VAULT. 
-            EACH REQUEST DISPENSES 1,000 UNITS OF EACH TOKEN. 
-            FOR DEMO PURPOSES ONLY.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Token Grid */}
-        <div className="lg:col-span-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {VAULTS.map((vault) => (
-              <TokenCard 
-                key={vault.id} 
-                vault={vault} 
-                onClaim={() => handleMint(vault.tokenAddress, vault.symbol)}
-                refreshTrigger={refreshTrigger}
-              />
-            ))}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {Object.entries(CONTRACT_ADDRESSES)
+              .filter(([key]) => !['RWAVault', 'ObolusOracle'].includes(key))
+              .map(([symbol, address]) => (
+                <TokenCard 
+                  key={symbol}
+                  symbol={symbol}
+                  address={address as string}
+                  balance={balances?.[symbol]?.formatted || '0'}
+                  onClaim={() => handleMint(symbol, address as string)}
+                  isMinting={mintingSymbol === symbol}
+                />
+              ))}
           </div>
         </div>
 
         {/* Terminal Logs */}
         <div className="lg:col-span-4 space-y-6">
-          <h2 className="text-xs font-bold tracking-widest text-foreground/60 uppercase">
-            TERMINAL_FEEDBACK // STREAMS
-          </h2>
-          <div className="bg-black/40 border border-border/40 rounded-3xl p-6 backdrop-blur-sm min-h-[400px] flex flex-col">
-            <div className="flex-grow space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold tracking-widest text-foreground/60 uppercase">
+              TERMINAL_FEEDBACK // STREAMS
+            </h2>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px] font-black text-amber-500/60 uppercase tracking-widest">LIVE_SYNC</span>
+              <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+            </div>
+          </div>
+          <div className="bg-black/40 border border-border/40 rounded-[32px] p-6 backdrop-blur-sm h-[600px] flex flex-col font-mono">
+            <div className="flex-grow space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               {logs.length > 0 ? (
                 logs.map((log, i) => (
-                  <div key={i} className="text-[10px] text-foreground/70 leading-relaxed break-all font-mono animate-in fade-in slide-in-from-left-2 duration-300">
-                    <span className="text-primary/60 font-bold mr-2">{">"}</span>
+                  <div key={i} className="text-[10px] text-foreground/70 leading-relaxed break-all animate-in fade-in slide-in-from-left-2 duration-300">
+                    <span className="text-amber-500/60 font-bold mr-2">{">"}</span>
                     {log}
                   </div>
                 ))
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-3 py-10 opacity-20 italic">
-                   <p className="text-[10px] uppercase">Waiting for input...</p>
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-20 italic">
+                   <Terminal className="w-8 h-8 mb-2" />
+                   <p className="text-[10px] uppercase tracking-widest">Awaiting execution...</p>
                 </div>
               )}
             </div>
@@ -177,123 +152,94 @@ export default function FaucetPage() {
         </div>
       </div>
 
-      {/* API Status Section */}
-      <div className="mt-8 space-y-4">
-        <h2 className="text-xs font-bold tracking-widest text-foreground/60 uppercase px-2">
-          API_STATUS // TWELVE_DATA // KEY_ROTATION
-        </h2>
-        <div className="bg-white/5 border border-border/20 rounded-[32px] p-8 backdrop-blur-sm overflow-hidden relative group hover:border-primary/20 transition-all">
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-            <Globe className="w-24 h-24 text-primary" />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {getKeyUsageStats().map((stat) => (
-              <div key={stat.keyIndex} className="space-y-3 p-4 bg-black/20 rounded-2xl border border-border/10">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest">KEY_{stat.keyIndex}</span>
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                </div>
-                <div className="text-xs font-mono font-bold text-foreground/80 truncate">{stat.keyPreview}</div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-[8px] font-black text-foreground/30 uppercase tracking-tighter">
-                    <span>Usage</span>
-                    <span>{stat.callsUsed}/800</span>
-                  </div>
-                  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-1000" 
-                      style={{ width: `${(stat.callsUsed / 800) * 100}%` }} 
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* Contract Registry Section */}
+      <div className="bg-white/5 border border-border/20 rounded-[40px] p-10 backdrop-blur-sm relative overflow-hidden group hover:border-amber-500/20 transition-all">
+        <div className="absolute top-0 right-0 p-10 opacity-5">
+           <Globe className="w-40 h-40 text-amber-500" />
+        </div>
+        
+        <div className="relative z-10 space-y-8">
+           <div className="space-y-2">
+              <h2 className="text-xs font-black text-amber-500 uppercase tracking-[0.3em]">CONTRACT_REGISTRY // BSC_TESTNET</h2>
+              <p className="text-2xl font-black text-foreground tracking-tighter uppercase">Deployed Protocol infrastructure</p>
+           </div>
 
-            <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 flex flex-col justify-center text-center">
-              <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">TOTAL_REMAINING</span>
-              <div className="text-2xl font-black text-primary tabular-nums tracking-tighter">
-                {getTotalCallsRemaining()}<span className="text-xs text-primary/40 font-bold ml-1">/2400</span>
-              </div>
-              <p className="text-[8px] text-primary/40 font-bold uppercase tracking-widest mt-1">Daily Reset: 00:00 UTC</p>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-border/10 grid grid-cols-1 md:grid-cols-2 gap-4 text-[9px] font-black uppercase tracking-[0.2em] text-foreground/30">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-3 h-3 text-green-500/50" />
-              <span>KEYS_ROTATE_AUTOMATICALLY // LEAST_USED_SELECTED</span>
-            </div>
-            <div className="flex items-center gap-2">
-               <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
-               <span>LIVE_MARKET_DATA // SYNCED_BY_PRICE_ENGINE</span>
-            </div>
-          </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { name: 'RWAVault', address: CONTRACT_ADDRESSES.RWAVault },
+                { name: 'ObolusOracle', address: CONTRACT_ADDRESSES.ObolusOracle },
+                ...Object.entries(CONTRACT_ADDRESSES).filter(([k]) => !['RWAVault', 'ObolusOracle'].includes(k)).map(([k, v]) => ({ name: k, address: v }))
+              ].map((contract) => (
+                <div key={contract.name} className="p-4 bg-black/20 rounded-2xl border border-border/10 group/item hover:border-amber-500/30 transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">{contract.name}</span>
+                    <a href={`https://testnet.bscscan.com/address/${contract.address}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-3 h-3 text-amber-500/40 group-hover/item:text-amber-500 transition-colors" />
+                    </a>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <code className="text-[10px] text-foreground/70 font-mono truncate">{contract.address}</code>
+                    <button onClick={() => { navigator.clipboard.writeText(contract.address as string); }} className="p-1 hover:bg-white/5 rounded-md">
+                      <Copy className="w-3 h-3 text-foreground/20 hover:text-foreground/60" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+           </div>
         </div>
       </div>
     </div>
   )
 }
 
-
-// ... (inside TokenCard)
-function TokenCard({ vault, onClaim, refreshTrigger }: { vault: any, onClaim: () => void, refreshTrigger: number }) {
-  const { address } = useAccount()
-  
-  const { data: balance, refetch } = useReadContract({
-    address: vault.tokenAddress as `0x${string}`,
-    abi: [
-      {
-        "inputs": [{ "name": "account", "type": "address" }],
-        "name": "balanceOf",
-        "outputs": [{ "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ] as const,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-  })
-
-  useEffect(() => {
-    if (address) refetch()
-  }, [refreshTrigger, refetch, address])
-
-  const formattedBalance = balance !== undefined ? formatUnits(balance, 18) : "0.00"
-
+function TokenCard({ symbol, address, balance, onClaim, isMinting }: { 
+  symbol: string, 
+  address: string, 
+  balance: string, 
+  onClaim: () => void,
+  isMinting: boolean 
+}) {
   return (
-    <div className="bg-card/20 border border-border/40 rounded-2xl p-5 backdrop-blur-sm group hover:border-primary/30 transition-all flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div 
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black"
-            style={{ backgroundColor: `${vault.color}10`, color: vault.color, border: `1px solid ${vault.color}30` }}
-          >
-            {vault.symbol[0]}
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-foreground">{vault.symbol}</h3>
-            <p className="text-[10px] text-foreground/40 uppercase tracking-tighter">{vault.name}</p>
+    <div className="bg-white/5 border border-border/20 rounded-[32px] p-6 backdrop-blur-sm group hover:border-amber-500/30 transition-all flex flex-col gap-6 relative overflow-hidden">
+      <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-5 transition-opacity">
+        <Zap className="w-16 h-16 text-amber-500" />
+      </div>
+      
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-foreground/5 border border-border/20 flex items-center justify-center text-lg font-black text-foreground">
+          {symbol[0]}
+        </div>
+        <div>
+          <h3 className="text-sm font-black text-foreground uppercase tracking-tight">{symbol}</h3>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-foreground/40 font-mono truncate max-w-[80px]">{address}</span>
+            <a href={`https://testnet.bscscan.com/address/${address}`} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-2.5 h-2.5 text-foreground/20 hover:text-amber-500 transition-colors" />
+            </a>
           </div>
         </div>
       </div>
       
-      <div className="bg-white/5 rounded-xl p-3 border border-border/10">
-        <p className="text-[9px] text-foreground/40 uppercase font-black mb-1">Your Balance</p>
-        <div className="flex items-baseline gap-1">
-          <span className="text-lg font-mono font-bold text-foreground">
-            {parseFloat(formattedBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+      <div className="bg-black/40 rounded-2xl p-5 border border-border/10">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-[9px] text-foreground/30 font-black uppercase tracking-widest">WALLETS_BALANCE</span>
+          <div className="w-1 h-1 rounded-full bg-green-500/50" />
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-black text-foreground tabular-nums tracking-tighter">
+            {parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <span className="text-[10px] text-foreground/40 font-bold">{vault.symbol}</span>
+          <span className="text-xs font-bold text-foreground/20 uppercase">{symbol}</span>
         </div>
       </div>
 
       <Button 
         onClick={onClaim}
-        variant="outline"
-        className="w-full border-primary/20 hover:bg-primary/5 text-primary font-black text-[10px] rounded-xl h-10 uppercase"
+        disabled={isMinting}
+        className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/20 text-black font-black text-xs h-12 rounded-2xl uppercase tracking-widest transition-all"
       >
-        CLAIM_1000_{vault.symbol}
+        {isMinting ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+        {isMinting ? 'MINTING_PROTOCOL...' : `Claim_1000_${symbol}`}
       </Button>
     </div>
   )

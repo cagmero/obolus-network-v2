@@ -23,45 +23,37 @@ export const config = getDefaultConfig({
   }),
 })
 
-// Obolus V1 Contracts - BSC Testnet Core (Replacing Zama placeholders)
+// Obolus V1 Contracts - BSC Testnet Core
 export const OBOLUS_ADDRESSES = {
   bscTestnet: {
     RWAVault: "0x772C9513fFcffaed224048b3e22AcF9E58854b73" as const,
     ObolusOracle: "0xb0ab8015Ce10593eE9a26E78B0BeDBc21330ba23" as const,
+    TSLAx: "0x2B05DC386bbe679fD22eDE500b52B858B86B3778" as const,
+    AAPLx: "0x11ba0F051f6859a8BBb98cCa14B40F280FcB96F0" as const,
+    NVDAon: "0x235a45B9d8A51c1D4aCFd2d4EaA9bA2B263E0c78" as const,
+    GOOGLx: "0xa9308C9938C9E09AeD4211E777696feB1Ff0c77B" as const,
+    SPYx: "0x39E2D41eB56188259137a8931a0Ce04fFEF6413f" as const,
+    CRCLX: "0x6260371533F981A05d097f33283B1351a542F2Ff" as const,
+    MUon: "0x7e8ED851A79e36fdAF3AF981dDd0C1aB05E72e3A" as const,
+    QQQon: "0xDe03fE8EBeD5CFbc7B514EAbDbB79c449c986fd1" as const,
+    AMZNon: "0x6E7f4106Fe51CB751a82BEfAD45d3b386301cCde" as const,
   },
   localhost: {
     RWAVault: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c" as const,
-    PositionManager: "0x0000000000000000000000000000000000000000" as const, // Not deployed yet
     ObolusOracle: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed" as const,
   }
 }
 
-// ABIs - Updated for clean uint256 architecture
-export const RWAVaultABI = parseAbi([
-  "function deposit(address token, uint256 amount) external",
-  "function withdraw(address token, uint256 shares) external",
-  "function acceptedTokens(address token) view returns (bool)",
-  "function getPosition(address user, address token) view returns (uint256)",
-  "function getTotalShares(address user) view returns (uint256)",
-  "event Deposited(address indexed token, uint256 amount, address indexed receiver)",
-  "event Withdrawn(address indexed token, uint256 amount, address indexed receiver)"
-])
-
-export const ObolusOracleABI = parseAbi([
-  "function getSValue(address token) view returns (uint128 sValue, bool paused)",
-  "function getAllSValues() view returns (address[] tokens, uint128[] sValues, bool[] paused)",
-  "function registeredTokens(address token) view returns (bool)",
-  "event TokenRegistered(address indexed token)"
-])
+export const CONTRACT_ADDRESSES = OBOLUS_ADDRESSES.bscTestnet
 
 // Typed Contract Configs
 export const OBOLUS_CONTRACTS = {
   RWAVault: {
-    address: OBOLUS_ADDRESSES.bscTestnet.RWAVault,
-    abi: RWAVaultABI,
+    address: CONTRACT_ADDRESSES.RWAVault,
+    abi: [] as any, // Will be imported from lib/abis in hooks
   },
   ObolusOracle: {
-    address: OBOLUS_ADDRESSES.bscTestnet.ObolusOracle,
-    abi: ObolusOracleABI,
+    address: CONTRACT_ADDRESSES.ObolusOracle,
+    abi: [] as any,
   }
 } as const
