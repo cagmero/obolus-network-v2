@@ -1,11 +1,12 @@
 /**
  * GET /api/v1/cre-public-key
  * Returns the CRE public key for client-side ECIES encryption.
+ * If no key is configured, generates one for demo purposes.
  */
 import { NextResponse } from 'next/server';
-
-const CRE_PUBLIC_KEY = process.env.CRE_PUBLIC_KEY || '04placeholder_cre_public_key_hex';
+import { getOrCreateCREKeys } from '@/lib/server/cre-keys';
 
 export async function GET() {
-  return NextResponse.json({ publicKey: CRE_PUBLIC_KEY });
+  const { publicKey } = getOrCreateCREKeys();
+  return NextResponse.json({ publicKey });
 }

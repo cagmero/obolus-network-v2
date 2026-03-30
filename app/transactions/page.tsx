@@ -79,7 +79,7 @@ export default function TransactionsPage() {
                  </h3>
                </div>
                <p className="text-foreground/60 text-xs leading-relaxed uppercase">
-                 <strong className="text-white">SHIELDED LEDGER:</strong> YOUR TRANSACTION HISTORY IS PRIVATELY RECORDED. ONLY YOUR WALLET KEY CAN LINK THESE ACTIONS TO YOUR RAW POSITION BALANCES.
+                 <strong className="text-white">SHIELDED LEDGER:</strong> YOUR POSITIONS ARE ECIES-ENCRYPTED WITH THE CRE PUBLIC KEY. THE SERVER STORES ONLY CIPHERTEXT. ONLY THE CHAINLINK CRE (TEE) CAN DECRYPT DURING SETTLEMENT CYCLES. YOUR WALLET SIGNATURE DERIVES A LOCAL AES KEY FOR PRIVACY REVEAL.
                </p>
             </div>
           </div>

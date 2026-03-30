@@ -32,16 +32,21 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
       net: false,
       tls: false,
+      path: false,
     }
     config.resolve.alias = {
       ...config.resolve.alias,
       '@react-native-async-storage/async-storage': false,
+    }
+    // Externalize server-only modules in API routes
+    if (isServer) {
+      config.externals = [...(config.externals || []), 'eciesjs']
     }
     return config
   },

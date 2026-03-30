@@ -23,7 +23,13 @@ import { parseEther } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
 import { CONTRACT_ADDRESSES } from '@/lib/wagmi';
 import { RWAVaultABI, MockERC20ABI } from '@/lib/abis';
+import { ShieldedVaultABI } from '@/lib/shielded-vault-abi';
 import { OBOLUS_DOMAIN, EIP712_TYPES } from '@/lib/eip712';
+
+// Use ShieldedVault if deployed, otherwise fall back to RWAVault
+const SHIELDED_VAULT_ADDRESS = process.env.NEXT_PUBLIC_SHIELDED_VAULT || '';
+const VAULT_ADDRESS = SHIELDED_VAULT_ADDRESS || CONTRACT_ADDRESSES.RWAVault;
+const VAULT_ABI = SHIELDED_VAULT_ADDRESS ? ShieldedVaultABI : RWAVaultABI;
 import { encryptAmount } from '@/lib/encryption';
 import { api } from '@/lib/api';
 
@@ -77,17 +83,19 @@ export function useShieldedDeposit() {
         address: tokenAddress as `0x${string}`,
         abi: MockERC20ABI,
         functionName: 'approve',
-        args: [CONTRACT_ADDRESSES.RWAVault as `0x${string}`, parsedAmount],
+        args: [VAULT_ADDRESS as `0x${string}`, parsedAmount],
       });
       await publicClient?.waitForTransactionReceipt({ hash: approveTx });
 
-      // Step 2: On-chain deposit (temporary — will be shielded)
+      // Step 2: On-chain deposit (into ShieldedVault — no per-user tracking)
       setStep('depositing');
       const depositTx = await writeContractAsync({
-        address: CONTRACT_ADDRESSES.RWAVault as `0x${string}`,
-        abi: RWAVaultABI,
+        address: VAULT_ADDRESS as `0x${string}`,
+        abi: VAULT_ABI,
         functionName: 'deposit',
-        args: [tokenAddress as `0x${string}`, parsedAmount, address],
+        args: SHIELDED_VAULT_ADDRESS
+          ? [tokenAddress as `0x${string}`, parsedAmount]  // ShieldedVault: deposit(token, amount)
+          : [tokenAddress as `0x${string}`, parsedAmount, address],  // RWAVault: deposit(token, amount, receiver)
       });
       setTxHash(depositTx);
       await publicClient?.waitForTransactionReceipt({ hash: depositTx });

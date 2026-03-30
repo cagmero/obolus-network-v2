@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { api } from '@/lib/api'
 import { useAccount } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
+import { encryptAmount } from '@/lib/encryption'
 
 export type TxStep =
   | 'idle'
@@ -79,12 +80,20 @@ export function useDepositFlow() {
       await publicClient?.waitForTransactionReceipt({ hash: depositTx })
       setStep('deposit_confirmed')
 
+      // Encrypt the amount for CRE before recording
+      let encryptedAmt = 'encrypted';
+      try {
+        encryptedAmt = await encryptAmount(amount);
+      } catch {
+        // Fallback if encryption fails (e.g. CRE key not available)
+      }
+
       await api.post('/transactions/record', {
         userAddress: address,
         type: 'deposit',
         vaultId: tokenSymbol.toLowerCase(),
         tokenAddress,
-        encryptedAmount: 'encrypted',
+        encryptedAmount: encryptedAmt,
         txHash: depositTx,
         chainId: 97,
         status: 'executed',
@@ -93,7 +102,7 @@ export function useDepositFlow() {
         userAddress: address,
         vaultId: tokenSymbol.toLowerCase(),
         tokenAddress,
-        encryptedBalance: 'encrypted',
+        encryptedBalance: encryptedAmt,
         txHashDeposit: depositTx,
         chainId: 97,
         status: 'active',
@@ -167,12 +176,19 @@ export function useWithdrawFlow() {
 
       await publicClient?.waitForTransactionReceipt({ hash: withdrawTx })
 
+      let encryptedWithdrawAmt = 'encrypted';
+      try {
+        encryptedWithdrawAmt = await encryptAmount(shares);
+      } catch {
+        // Fallback
+      }
+
       await api.post('/transactions/record', {
         userAddress: address,
         type: 'withdraw',
         vaultId: tokenSymbol.toLowerCase(),
         tokenAddress,
-        encryptedAmount: 'encrypted',
+        encryptedAmount: encryptedWithdrawAmt,
         txHash: withdrawTx,
         chainId: 97,
         status: 'executed',

@@ -1,10 +1,10 @@
 /**
- * Obolus Server State — In-memory blind storage.
+ * Obolus Server State — File-backed blind storage.
  *
  * This is the "dumb blob store" layer. It holds encrypted data
  * but cannot decrypt any of it. Only the CRE has the private key.
  *
- * In production, replace with MongoDB/Supabase persistence.
+ * State persists to .obolus-state.json so it survives restarts.
  */
 import type {
   ShieldedPosition,
@@ -12,12 +12,59 @@ import type {
   PendingTransfer,
   TransferReason,
 } from '@/lib/privacy-types';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+const STATE_FILE = join(process.cwd(), '.obolus-state.json');
 
 // ── In-memory stores ────────────────────────────────
 
 const depositSlots = new Map<string, DepositSlot>();
 const shieldedPositions = new Map<string, ShieldedPosition>();
 const pendingTransfers = new Map<string, PendingTransfer>();
+
+// ── Persistence ─────────────────────────────────────
+
+function loadState() {
+  if (!existsSync(STATE_FILE)) return;
+  try {
+    const data = JSON.parse(readFileSync(STATE_FILE, 'utf-8'));
+    if (data.depositSlots) {
+      for (const [k, v] of Object.entries(data.depositSlots)) {
+        depositSlots.set(k, v as DepositSlot);
+      }
+    }
+    if (data.shieldedPositions) {
+      for (const [k, v] of Object.entries(data.shieldedPositions)) {
+        shieldedPositions.set(k, v as ShieldedPosition);
+      }
+    }
+    if (data.pendingTransfers) {
+      for (const [k, v] of Object.entries(data.pendingTransfers)) {
+        pendingTransfers.set(k, v as PendingTransfer);
+      }
+    }
+    console.log('[STATE] Loaded from .obolus-state.json');
+  } catch {
+    console.warn('[STATE] Could not load state file');
+  }
+}
+
+function saveState() {
+  try {
+    const data = {
+      depositSlots: Object.fromEntries(depositSlots),
+      shieldedPositions: Object.fromEntries(shieldedPositions),
+      pendingTransfers: Object.fromEntries(pendingTransfers),
+    };
+    writeFileSync(STATE_FILE, JSON.stringify(data, null, 2));
+  } catch {
+    // Silent fail — state is still in memory
+  }
+}
+
+// Load on module init
+loadState();
 
 // ── Deposit Slots ───────────────────────────────────
 
@@ -39,6 +86,7 @@ export function createDepositSlot(params: {
     expiresAt: params.expiresAt,
   };
   depositSlots.set(slot.slotId, slot);
+  saveState();
   return slot;
 }
 
@@ -65,6 +113,7 @@ export function createShieldedPosition(params: {
     updatedAt: Date.now(),
   };
   shieldedPositions.set(key, position);
+  saveState();
   return position;
 }
 
@@ -72,7 +121,6 @@ export function getShieldedPositions(userAddress: string): ShieldedPosition[] {
   const results: ShieldedPosition[] = [];
   for (const pos of shieldedPositions.values()) {
     if (pos.status !== 'active') continue;
-    // Wildcard '*' returns all active positions (used by CRE)
     if (userAddress === '*' || pos.userAddress === userAddress) {
       results.push(pos);
     }
@@ -86,6 +134,7 @@ export function closeShieldedPosition(userAddress: string, token: string): boole
   if (!pos) return false;
   pos.status = 'closed';
   pos.updatedAt = Date.now();
+  saveState();
   return true;
 }
 
@@ -109,6 +158,7 @@ export function queueTransfer(params: {
     createdAt: Date.now(),
   };
   pendingTransfers.set(transfer.transferId, transfer);
+  saveState();
   return transfer;
 }
 
@@ -130,10 +180,11 @@ export function confirmTransfer(
   transfer.status = status;
   transfer.txHash = txHash;
   transfer.executedAt = Date.now();
+  saveState();
   return true;
 }
 
-// ── Cleanup (expire old slots) ──────────────────────
+// ── Cleanup ─────────────────────────────────────────
 
 export function cleanupExpiredSlots(): number {
   const now = Date.now();
@@ -144,5 +195,6 @@ export function cleanupExpiredSlots(): number {
       cleaned++;
     }
   }
+  if (cleaned > 0) saveState();
   return cleaned;
 }

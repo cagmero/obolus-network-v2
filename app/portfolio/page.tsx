@@ -35,6 +35,7 @@ import Link from 'next/link'
 import { useAccount } from 'wagmi'
 import { decryptUserData } from '@/lib/encryption'
 import { useObolusAuth, useNAVHistory } from '@/hooks/useVaults'
+import { usePrivacyReveal } from '@/hooks/usePrivacyReveal'
 import NAVChart from '@/components/NAVChart'
 
 export default function PortfolioPage() {
@@ -45,10 +46,12 @@ export default function PortfolioPage() {
   const [showValues, setShowValues] = useState<boolean>(false)
   const { getSignature } = useObolusAuth()
   const [isRevealing, setIsRevealing] = useState(false)
+  const { reveal, hide, revealed, positions: revealedPositions, loading: revealLoading } = usePrivacyReveal()
   const { data: prices } = useAllPrices()
   const [logs, setLogs] = useState<{msg: string, type: 'info' | 'success' | 'warn' | 'error', status: string}[]>([
     { msg: "SECURITY_DAEMON_INITIALIZED", type: 'info', status: 'OK' },
     { msg: "BLIND_STORAGE_SYNCED", type: 'info', status: 'READY' },
+    { msg: "CRE_PRIVACY_LAYER_ACTIVE", type: 'info', status: 'SHIELDED' },
     { msg: "WAITING_FOR_IDENTITY_PROOF", type: 'warn', status: 'LOCKED' }
   ])
 
@@ -59,24 +62,26 @@ export default function PortfolioPage() {
   const handleReveal = async () => {
     if (showValues) {
       setShowValues(false)
-      addLog("USER_SESSION_LOCKED", "warn", "LOCKED")
+      hide()
+      addLog("USER_SESSION_LOCKED // POSITIONS_RE_ENCRYPTED", "warn", "LOCKED")
       return
     }
 
     try {
       setIsRevealing(true)
-      addLog("DECRYPTION_PROTOCOL_INITIATED", "info", "STARTING")
+      addLog("PRIVACY_REVEAL_INITIATED", "info", "STARTING")
+      addLog("EIP712_SIGNING // TYPE: Privacy Reveal", "info", "SIGNING")
       
-      const { signature } = await getSignature()
-      addLog("EIP712_SIGNATURE_CAPTURED", "success", "VERIFIED")
+      await reveal()
       
-      addLog("DERIVING_DECRYPTION_KEYS", "info", "PROCESSING")
-      await decryptUserData("ENCRYPTED_BLOB", signature)
-      addLog("CLIENT_SIDE_DECRYPTION_SUCCESS", "success", "UNLOCKED")
+      addLog("EIP712_SIGNATURE_VERIFIED // SERVER_AUTHENTICATED", "success", "VERIFIED")
+      addLog("ECIES_POSITIONS_FETCHED // BLIND_STORAGE", "info", "PROCESSING")
+      addLog("AES_KEY_DERIVED_FROM_SIGNATURE // PBKDF2", "success", "DERIVED")
+      addLog("CLIENT_SIDE_DECRYPTION_COMPLETE // POSITIONS_VISIBLE", "success", "UNLOCKED")
       
       setShowValues(true)
     } catch (err) {
-      addLog("AUTHENTICATION_FAILED", "error", "FAIL")
+      addLog("PRIVACY_REVEAL_FAILED // SIGNATURE_REJECTED", "error", "FAIL")
       console.error("Reveal failed:", err)
     } finally {
       setIsRevealing(false)

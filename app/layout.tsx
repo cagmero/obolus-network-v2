@@ -1,14 +1,17 @@
 'use client'
 
 import React, { Suspense } from "react"
+import dynamic from 'next/dynamic'
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-import { AppHeader } from "@/components/header"
-import { AppFooter } from "@/components/footer"
-import { Providers } from "@/components/providers"
-import { WalletConnectHandler } from "@/components/WalletConnectHandler"
+
+// Dynamic imports to prevent SSR localStorage issues
+const AppHeader = dynamic(() => import("@/components/header").then(m => ({ default: m.AppHeader })), { ssr: false })
+const AppFooter = dynamic(() => import("@/components/footer").then(m => ({ default: m.AppFooter })), { ssr: false })
+const Providers = dynamic(() => import("@/components/providers").then(m => ({ default: m.Providers })), { ssr: false })
+const WalletConnectHandler = dynamic(() => import("@/components/WalletConnectHandler").then(m => ({ default: m.WalletConnectHandler })), { ssr: false })
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const queryClient = new QueryClient({

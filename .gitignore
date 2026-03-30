@@ -26,3 +26,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /lib/generated/prisma
+
+# Obolus privacy layer state (contains secrets)
+.cre-keys.json
+.obolus-state.json

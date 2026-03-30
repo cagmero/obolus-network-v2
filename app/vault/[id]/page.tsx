@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { useVaultPosition, useVaultShares, useTokenBalance, useTokenAllowance, useOracleSValue } from '@/hooks/useContracts'
-import { useDepositFlow, useWithdrawFlow } from '@/hooks/useContractWrite'
+import { useShieldedDeposit, useShieldedWithdraw } from '@/hooks/useShieldedVault'
 import { CONTRACT_ADDRESSES } from '@/lib/wagmi'
 import { VAULTS } from '@/lib/vaults'
 import { useAccount, useChainId } from 'wagmi'
@@ -48,8 +48,8 @@ export default function VaultDetailPage() {
   const { formatted: totalShares, refetch: refetchShares } = useVaultShares()
   const { sValue, paused } = useOracleSValue(tokenAddress as string)
   
-  const { deposit, step: depositStep, txHash: depositTxHash, error: depositError, reset: resetDeposit } = useDepositFlow()
-  const { withdraw, step: withdrawStep, txHash: withdrawTxHash, error: withdrawError, reset: resetWithdraw } = useWithdrawFlow()
+  const { deposit, step: depositStep, txHash: depositTxHash, error: depositError, reset: resetDeposit } = useShieldedDeposit()
+  const { withdraw, step: withdrawStep, transferId: withdrawTransferId, error: withdrawError, reset: resetWithdraw } = useShieldedWithdraw()
   
   const { formatted: vaultTVLBalance } = useTokenBalance(tokenAddress as string, CONTRACT_ADDRESSES.RWAVault)
   
@@ -73,32 +73,39 @@ export default function VaultDetailPage() {
   const handleDeposit = async () => {
     if (!amount || !tokenAddress) return
     try {
-      addLog(`INITIATING_VAULT_ENTRY // ${vault?.symbol} // AMOUNT: ${amount}`)
-      await deposit({
+      addLog(`INITIATING_SHIELDED_DEPOSIT // ${vault?.symbol} // AMOUNT: ${amount}`)
+      addLog('STEP_1: ON_CHAIN_APPROVE + DEPOSIT')
+      const result = await deposit({
         tokenSymbol: vault?.symbol || '',
         tokenAddress: tokenAddress as string,
         amount: amount
       })
-      addLog('PROTOCOL_HANDSHAKE_COMPLETE // ASSETS_LOCKED')
+      addLog(`STEP_2: EIP712_SIGNATURE_VERIFIED`)
+      addLog(`STEP_3: ECIES_ENCRYPTION_COMPLETE // CRE_PUBKEY`)
+      addLog(`STEP_4: SHIELDED_TO_POOL_WALLET // TX: ${result?.depositTxHash?.slice(0, 16)}...`)
+      addLog('PROTOCOL_HANDSHAKE_COMPLETE // POSITION_SHIELDED')
       setAmount('')
     } catch (e) {
-      // Error handled by hook
+      addLog('SHIELD_DEPOSIT_FAILED // CHECK_WALLET')
     }
   }
 
   const handleWithdraw = async () => {
     if (!amount || !tokenAddress) return
     try {
-      addLog(`INITIATING_VAULT_EXIT // ${vault?.symbol} // SHARES: ${amount}`)
-      await withdraw({
+      addLog(`INITIATING_SHIELDED_WITHDRAW // ${vault?.symbol} // SHARES: ${amount}`)
+      addLog('STEP_1: EIP712_WITHDRAW_AUTHORIZATION')
+      const result = await withdraw({
         tokenSymbol: vault?.symbol || '',
         tokenAddress: tokenAddress as string,
         shares: amount
       })
-      addLog('ASSETS_RELEASED // SETTLEMENT_PENDING')
+      addLog(`STEP_2: TRANSFER_QUEUED // ID: ${result?.transferId?.slice(0, 8)}...`)
+      addLog('STEP_3: CRE_EXECUTING_POOL_TO_USER_TRANSFER')
+      addLog('ASSETS_UNSHIELDED // SETTLEMENT_COMPLETE')
       setAmount('')
     } catch (e) {
-      // Error handled by hook
+      addLog('SHIELD_WITHDRAW_FAILED // CHECK_WALLET')
     }
   }
 
@@ -293,18 +300,19 @@ export default function VaultDetailPage() {
                     </div>
 
                     <div className="space-y-3">
-                       <StatusStep label="Step 1: Authorization" completed={['approve_confirmed', 'depositing', 'complete'].includes(depositStep)} loading={depositStep === 'approving'} />
-                       <StatusStep label="Step 2: Execution" completed={['complete'].includes(depositStep || withdrawStep)} loading={['depositing', 'recording'].includes(depositStep || withdrawStep)} />
+                       <StatusStep label="Step 1: Approve + Deposit" completed={['signing', 'encrypting', 'shielding', 'complete'].includes(depositStep) || withdrawStep === 'complete'} loading={depositStep === 'approving' || depositStep === 'depositing'} />
+                       <StatusStep label="Step 2: EIP-712 Signature" completed={['encrypting', 'shielding', 'complete'].includes(depositStep) || ['queued', 'executing', 'complete'].includes(withdrawStep)} loading={depositStep === 'signing' || withdrawStep === 'signing'} />
+                       <StatusStep label="Step 3: ECIES Encrypt + Shield" completed={depositStep === 'complete' || withdrawStep === 'complete'} loading={depositStep === 'encrypting' || depositStep === 'shielding' || withdrawStep === 'queued' || withdrawStep === 'executing'} />
                     </div>
 
-                    {(depositTxHash || withdrawTxHash) && (
+                    {(depositTxHash || withdrawTransferId) && (
                       <a 
-                        href={`https://testnet.bscscan.com/tx/${depositTxHash || withdrawTxHash}`}
+                        href={depositTxHash ? `https://testnet.bscscan.com/tx/${depositTxHash}` : '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 bg-black/40 rounded-xl group/link"
                       >
-                         <span className="text-[8px] font-mono text-foreground/40">{depositTxHash || withdrawTxHash}</span>
+                         <span className="text-[8px] font-mono text-foreground/40">{depositTxHash || `Transfer: ${withdrawTransferId}`}</span>
                          <ExternalLink className="w-3 h-3 text-primary/40 group-hover/link:text-primary" />
                       </a>
                     )}
