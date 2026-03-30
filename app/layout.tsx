@@ -28,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
         <title>Obolus — Private Equity Vault on BNB Chain</title>
-        <meta name="description" content="Deposit tokenized US stocks on BNB Chain with encrypted positions via Zama fhEVM. Nobody sees what you hold." />
+        <meta name="description" content="Deposit tokenized US stocks on BNB Chain with encrypted positions via Chainlink CRE + ECIES. Nobody sees what you hold." />
       </head>
       <body className={`font-mono ${GeistSans.variable} ${GeistMono.variable} antialiased min-h-dvh bg-background`}>
         <QueryClientProvider client={queryClient}>

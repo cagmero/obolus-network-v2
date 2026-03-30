@@ -1,18 +1,8 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { bsc, bscTestnet, localhost } from 'wagmi/chains'
-import { parseAbi, defineChain } from 'viem'
 import { cookieStorage, createStorage } from 'wagmi'
 
-// Custom Zama Devnet Chain
-export const zamaDevnet = defineChain({
-  id: 7202,
-  name: 'Zama Devnet',
-  nativeCurrency: { name: 'ZAMA', symbol: 'ZAMA', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://devnet.zama.ai'] },
-  },
-})
-
+// Wagmi config — BSC Testnet + Mainnet
 export const config = getDefaultConfig({
   appName: 'Obolus Network',
   projectId: '1745eedb32cb0f103490b50b14761c85',

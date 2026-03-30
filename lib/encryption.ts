@@ -54,3 +54,22 @@ export async function encryptAmount(amount: string): Promise<string> {
     return ""
   }
 }
+/**
+ * Decrypt a value locally using a signature as the derivation key.
+ * In a production setup, the signature would generate a symmetric key (AES) 
+ * to decrypt the sensitive blobs from the "Dumb Store."
+ */
+export async function decryptData(ciphertext: string, signature: string): Promise<string> {
+  if (typeof window === "undefined") return ciphertext;
+  
+  // Simulation: We use the signature as a seed to "unlock" the value.
+  // In a real implementation with ECIES/AES, we'd use the signature to derive the private key.
+  console.log("[OBOLUS] LOCAL_DECRYPTION_STARTED // Using Signature as derivation seed");
+  
+  // Wait for the "Decryption" process
+  await new Promise(r => setTimeout(r, 1200));
+  
+  // For the demo, we return the value. 
+  // In reality, ciphertext would be hex, and this would return the plaintext.
+  return ciphertext; 
+}

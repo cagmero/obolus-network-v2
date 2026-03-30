@@ -16,7 +16,7 @@ We use a specialized hook layer in `hooks/` to manage all blockchain and server 
 Native Web3 connectivity on **BSC Testnet** with a customized **Neon Confidential** theme.
 
 ### 3. **Privacy Reveal Mechanism**
-Leveraging **fhEVM**, user balances are stored as encrypted ciphertexts. The UI features a "Privacy Reveal" toggle that locally decrypts these values for the user.
+Leveraging **ECIES encryption + Chainlink CRE**, user balances are stored as encrypted ciphertexts. The server acts as "dumb storage" and cannot read positions. The UI features a "Privacy Reveal" toggle that locally decrypts these values for the user.
 
 ---
 

@@ -2,8 +2,8 @@
 
 ## V1 — Privacy Equity Vault (Live — March 2026)
 - ERC-4626 RWAVault.sol accepting TSLAon, NVDAon, SPYon, QQQon on BNB Chain
-- fhEVM encrypted balances via Zama — nobody sees your positions
-- PositionManager.sol — encrypted per-user per-token holdings (euint64)
+- ECIES-encrypted balances via Chainlink CRE — nobody sees your positions
+- PositionManager.sol — encrypted per-user per-token holdings
 - ObolusOracle.sol — wraps Ondo SyntheticSharesOracle for real-time NAV
 - wGM vault shares — encrypted ERC-4626 receipt tokens
 - Deposit / withdraw as GM tokens or USDon
@@ -13,7 +13,7 @@
 ## V1.5 — Private Transfers (Q2 2026)
 - Encrypted transfer amounts — not just balances
 - Shield deposit amounts from on-chain observers
-- fhEVM private approval flows
+- CRE-based private approval flows
 
 ## V2 — Yield Router (Q3 2026)
 - Post GM tokens as collateral to BSC lending markets (Venus, Lista)
@@ -21,7 +21,7 @@
 - Route USDC to highest-yield DeFi source
 - Encrypted allocation weights — strategy is a trade secret
 - Net APY = stock appreciation + DeFi yield − borrow cost
-- YieldRouter.sol with euint64 encrypted weights
+- YieldRouter.sol with encrypted allocation weights
 
 ## V2.5 — Credit Layer (Q4 2026)
 - Yield accrual services undercollateralized loans

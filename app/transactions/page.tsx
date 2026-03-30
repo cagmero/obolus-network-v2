@@ -75,7 +75,7 @@ export default function TransactionsPage() {
                <div className="flex items-center justify-between mb-3">
                  <h3 className="text-white font-bold text-xs flex items-center gap-2 tracking-wider">
                    <Lightbulb className="w-4 h-4 text-primary" />
-                   fhEVM INSIGHTS
+                   CRE INSIGHTS
                  </h3>
                </div>
                <p className="text-foreground/60 text-xs leading-relaxed uppercase">
