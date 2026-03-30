@@ -57,6 +57,14 @@ export default function PortfolioPage() {
     })
 
   const totalValue = activePositions.reduce((acc, curr) => acc + curr.value, 0)
+  const totalChange24h = activePositions.reduce((acc, curr) => {
+    const change = (prices?.[curr.symbol]?.changePercent || 0) / 100 * curr.value
+    return acc + change
+  }, 0)
+  const totalYield = activePositions.reduce((acc, curr) => {
+    const yieldAmount = (curr.vault?.baseApy || 0) / 100 * curr.value
+    return acc + yieldAmount
+  }, 0)
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 py-10 px-6">
@@ -105,11 +113,14 @@ export default function PortfolioPage() {
            <div className="space-y-4 relative z-10">
               <div className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">TOTAL_PORTFOLIO_NET_WORTH</div>
               <div className="text-6xl font-black text-foreground tracking-tighter tabular-nums blur-sm hover:blur-none transition-all">
-                {showValues ? `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '$X,XXX,XXX.XX'}
+                {showValues ? `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$X,XXX,XXX.XX'}
               </div>
-              <div className="flex items-center gap-2 text-green-500 font-bold text-xs uppercase tracking-widest">
-                 <ArrowUpRight className="w-4 h-4" />
-                 <span>+$12,450.20 (24H)</span>
+              <div className={cn(
+                "flex items-center gap-2 font-bold text-xs uppercase tracking-widest",
+                totalChange24h >= 0 ? "text-green-500" : "text-red-500"
+              )}>
+                 {totalChange24h >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                 <span>{totalChange24h >= 0 ? '+' : ''}${Math.abs(totalChange24h).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (24H)</span>
               </div>
            </div>
            <div className="flex items-center gap-6 text-[9px] font-black text-foreground/20 uppercase tracking-[0.2em] relative z-10">
@@ -125,7 +136,12 @@ export default function PortfolioPage() {
         </div>
 
         <StatCard label="ASSETS_DISTRIBUTION" value={activePositions.length.toString()} subValue="ACTIVE_VAULTS" />
-        <StatCard label="TOTAL_YIELD_EARNED" value="+$4,221.80" subValue="ANNUALIZED_PROJECTION" color="text-primary" />
+        <StatCard 
+          label="TOTAL_YIELD_EARNED" 
+          value={`+$${totalYield.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+          subValue="ANNUALIZED_PROJECTION" 
+          color="text-primary" 
+        />
       </div>
 
       {/* Holdings Section */}

@@ -105,6 +105,7 @@ export default function TransactionsPage() {
               transactions.map((t: any, i: number) => (
                 <div
                   key={i}
+                  onClick={() => t.txHash && window.open(`https://testnet.bscscan.com/tx/${t.txHash}`, '_blank')}
                   className="glass-card rounded-xl p-6 flex items-center justify-between hover:bg-white/[0.04] transition-all group cursor-pointer border-l-2 border-l-white/10 hover:border-l-primary"
                 >
                   <div className="flex items-center gap-6">
