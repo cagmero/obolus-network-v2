@@ -26,9 +26,8 @@ export const config = getDefaultConfig({
 // Obolus V1 Contracts - BSC Testnet Core (Replacing Zama placeholders)
 export const OBOLUS_ADDRESSES = {
   bscTestnet: {
-    RWAVault: "0x489675685B62bB958B5C9672777A464aBb31B299" as const,
-    PositionManager: "0xe7Af7E8E7e9e8790EbB143e90bB3f05126d400E" as const,
-    ObolusOracle: "0x91f8Aff3738825e8eB16FC6f6b1A7A4647bDB299" as const,
+    RWAVault: "0x772C9513fFcffaed224048b3e22AcF9E58854b73" as const,
+    ObolusOracle: "0xb0ab8015Ce10593eE9a26E78B0BeDBc21330ba23" as const,
   },
   localhost: {
     RWAVault: "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c" as const,
@@ -39,25 +38,20 @@ export const OBOLUS_ADDRESSES = {
 
 // ABIs - Updated for clean uint256 architecture
 export const RWAVaultABI = parseAbi([
-  "function deposit(address token, uint256 amount) external returns (uint256)",
-  "function withdraw(address token, uint256 shares) external returns (uint256)",
-  "function totalAssets() view returns (uint256)",
-  "function balanceOf(address user) view returns (uint256)",
-  "function acceptedTokens(address) view returns (bool)",
-  "event Deposit(address indexed user, address indexed token, uint256 amount, uint256 shares)",
-  "event Withdraw(address indexed user, address indexed token, uint256 amount, uint256 shares)"
-])
-
-export const PositionManagerABI = parseAbi([
+  "function deposit(address token, uint256 amount) external",
+  "function withdraw(address token, uint256 shares) external",
+  "function acceptedTokens(address token) view returns (bool)",
   "function getPosition(address user, address token) view returns (uint256)",
-  "function updatePosition(address user, address token, uint256 amount) external",
-  "event PositionUpdated(address indexed user, address indexed token, uint256 amount)"
+  "function getTotalShares(address user) view returns (uint256)",
+  "event Deposited(address indexed token, uint256 amount, address indexed receiver)",
+  "event Withdrawn(address indexed token, uint256 amount, address indexed receiver)"
 ])
 
 export const ObolusOracleABI = parseAbi([
-  "function getGMTokenPrice(address token) view returns (uint256)",
-  "function getPortfolioNAV(address[] tokens, uint256[] amounts) view returns (uint256)",
-  "event OracleUpdated(address indexed oracle)"
+  "function getSValue(address token) view returns (uint128 sValue, bool paused)",
+  "function getAllSValues() view returns (address[] tokens, uint128[] sValues, bool[] paused)",
+  "function registeredTokens(address token) view returns (bool)",
+  "event TokenRegistered(address indexed token)"
 ])
 
 // Typed Contract Configs
@@ -65,10 +59,6 @@ export const OBOLUS_CONTRACTS = {
   RWAVault: {
     address: OBOLUS_ADDRESSES.bscTestnet.RWAVault,
     abi: RWAVaultABI,
-  },
-  PositionManager: {
-    address: OBOLUS_ADDRESSES.bscTestnet.PositionManager,
-    abi: PositionManagerABI,
   },
   ObolusOracle: {
     address: OBOLUS_ADDRESSES.bscTestnet.ObolusOracle,
