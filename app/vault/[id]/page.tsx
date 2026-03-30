@@ -51,11 +51,13 @@ export default function VaultDetailPage() {
   const { deposit, step: depositStep, txHash: depositTxHash, error: depositError, reset: resetDeposit } = useDepositFlow()
   const { withdraw, step: withdrawStep, txHash: withdrawTxHash, error: withdrawError, reset: resetWithdraw } = useWithdrawFlow()
   
+  const { formatted: vaultTVLBalance } = useTokenBalance(tokenAddress as string, CONTRACT_ADDRESSES.RWAVault)
+  
   const { data: marketDataResult } = useTokenPrice(vault?.symbol || '')
   const marketData = marketDataResult ? {
     price: marketDataResult.price,
     change: marketDataResult.changePercent,
-    tvl: 1250000 // Mock TVL for detail
+    tvl: parseFloat(vaultTVLBalance) * marketDataResult.price || 0
   } : null
 
   useEffect(() => {

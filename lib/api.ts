@@ -3,7 +3,8 @@
  * Handles communication with the MongoDB backend with EIP-712 auth support.
  */
 
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+const SERVER_BASE = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+const SERVER_URL = `${SERVER_BASE.replace(/\/$/, '')}/api/v1`;
 
 export interface ApiRequestOptions extends RequestInit {
   walletAddress?: string;

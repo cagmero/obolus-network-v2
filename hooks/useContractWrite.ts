@@ -1,4 +1,4 @@
-import { useWriteContract } from 'wagmi'
+import { useWriteContract, usePublicClient } from 'wagmi'
 import { parseEther } from 'viem'
 import { CONTRACT_ADDRESSES } from '@/lib/wagmi'
 import { RWAVaultABI, ERC20ABI, MockERC20ABI } from '@/lib/abis'
@@ -21,6 +21,7 @@ export function useDepositFlow() {
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const { writeContractAsync } = useWriteContract()
+  const publicClient = usePublicClient()
   const [step, setStep] = useState<TxStep>('idle')
   const [txHash, setTxHash] = useState<string>('')
   const [error, setError] = useState<string>('')
@@ -48,16 +49,14 @@ export function useDepositFlow() {
       })
       const approveTx = await writeContractAsync({
         address: tokenAddress as `0x${string}`,
-        abi: ERC20ABI,
+        abi: MockERC20ABI,
         functionName: 'approve',
         args: [CONTRACT_ADDRESSES.RWAVault as `0x${string}`, parsedAmount],
       })
       setApproveTxHash(approveTx)
       console.log('[OBOLUS:DEPOSIT_FLOW] Approve tx submitted:', approveTx)
 
-      // In a real app we'd wait for the receipt here. 
-      // For this implementation, we assume the next tx can be submitted once the first is accepted by the wallet.
-      // Ideally we'd use wagmi's useWaitForTransactionReceipt or publicClient.waitForTransactionReceipt.
+      await publicClient?.waitForTransactionReceipt({ hash: approveTx })
       setStep('approve_confirmed')
       console.log('[OBOLUS:DEPOSIT_FLOW] Approve confirmed')
 
@@ -72,13 +71,15 @@ export function useDepositFlow() {
         address: CONTRACT_ADDRESSES.RWAVault as `0x${string}`,
         abi: RWAVaultABI,
         functionName: 'deposit',
-        args: [tokenAddress as `0x${string}`, parsedAmount],
+        args: [tokenAddress as `0x${string}`, parsedAmount, address as `0x${string}`],
       })
       setTxHash(depositTx)
       console.log('[OBOLUS:DEPOSIT_FLOW] Deposit tx submitted:', depositTx)
+      
+      await publicClient?.waitForTransactionReceipt({ hash: depositTx })
       setStep('deposit_confirmed')
 
-      await api.post(`/transactions/${address}`, {
+      await api.post('/transactions/record', {
         userAddress: address,
         type: 'deposit',
         vaultId: tokenSymbol.toLowerCase(),
@@ -88,7 +89,7 @@ export function useDepositFlow() {
         chainId: 97,
         status: 'executed',
       });
-      await api.post(`/vault/position/${address}`, {
+      await api.post('/vault/position/upsert', {
         userAddress: address,
         vaultId: tokenSymbol.toLowerCase(),
         tokenAddress,
@@ -133,6 +134,7 @@ export function useWithdrawFlow() {
   const { address } = useAccount()
   const queryClient = useQueryClient()
   const { writeContractAsync } = useWriteContract()
+  const publicClient = usePublicClient()
   const [step, setStep] = useState<TxStep>('idle')
   const [txHash, setTxHash] = useState<string>('')
   const [error, setError] = useState<string>('')
@@ -163,7 +165,9 @@ export function useWithdrawFlow() {
       setTxHash(withdrawTx)
       console.log('[OBOLUS:WITHDRAW_FLOW] Withdraw tx:', withdrawTx)
 
-      await api.post(`/transactions/${address}`, {
+      await publicClient?.waitForTransactionReceipt({ hash: withdrawTx })
+
+      await api.post('/transactions/record', {
         userAddress: address,
         type: 'withdraw',
         vaultId: tokenSymbol.toLowerCase(),
@@ -173,7 +177,7 @@ export function useWithdrawFlow() {
         chainId: 97,
         status: 'executed',
       });
-      await api.post(`/vault/position/${address}/close`, {
+      await api.post('/vault/position/close', {
         userAddress: address,
         vaultId: tokenSymbol.toLowerCase(),
       });
