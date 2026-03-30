@@ -1,7 +1,7 @@
 import { useWriteContract } from 'wagmi'
 import { parseEther } from 'viem'
 import { CONTRACT_ADDRESSES } from '@/lib/wagmi'
-import { RWAVaultABI, ERC20ABI } from '@/lib/abis'
+import { RWAVaultABI, ERC20ABI, MockERC20ABI } from '@/lib/abis'
 import { useState } from 'react'
 import { api } from '@/lib/api'
 import { useAccount } from 'wagmi'
@@ -218,7 +218,7 @@ export function useMintFaucet() {
       console.log('[OBOLUS:FAUCET] Minting 1000', tokenSymbol, 'to', address)
       const mintTx = await writeContractAsync({
         address: tokenAddress as `0x${string}`,
-        abi: ERC20ABI,
+        abi: MockERC20ABI,
         functionName: 'mint',
         args: [address as `0x${string}`, FAUCET_AMOUNT],
       })
