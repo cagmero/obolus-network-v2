@@ -179,9 +179,8 @@ export default function VaultDetailPage() {
             />
             <StatCard 
               label="ESTIMATED_APY" 
-              value={`${vault?.apy || '12.5%'}`} 
+              value={`${vault.baseApy}%`} 
               subValue="PROJECTED_ANNUAL" 
-              color="text-primary"
             />
             <StatCard 
               label="YOUR_POSITION" 
@@ -211,7 +210,7 @@ export default function VaultDetailPage() {
                 {logs.length > 0 ? (
                   logs.map((log, i) => (
                     <div key={i} className="text-foreground/70 flex gap-2">
-                      <span className="text-primary/60">[{log.split(']')[0].replace('[','')]</span>
+                      <span className="text-primary/60">[{log.split(']')[0].replace('[', '')}]</span>
                       <span className="text-foreground/40 tracking-tighter">{log.split(']')[1]}</span>
                     </div>
                   ))
@@ -355,27 +354,6 @@ function Badge({ label }: { label: string }) {
   )
 }
 
-function StatCard({ label, value, subValue, color = "text-foreground" }: { label: string, value: string, subValue: string, color?: string }) {
-  return (
-    <div className="bg-white/5 border border-border/20 rounded-3xl p-8 backdrop-blur-sm relative overflow-hidden group hover:border-primary/20 transition-all">
-      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-10 transition-opacity">
-         <Plus className="w-12 h-12 text-primary" />
-      </div>
-      <div className="text-[9px] text-foreground/30 font-black uppercase tracking-widest mb-3">{label}</div>
-      <div className={cn("text-3xl font-black tracking-tighter", color)}>{value}</div>
-      <div className="text-[8px] text-foreground/20 font-bold uppercase tracking-widest mt-2">{subValue}</div>
-    </div>
-  )
-}
-
-function FeeRow({ label, value }: { label: string, value: string }) {
-  return (
-     <div className="space-y-1">
-        <span className="text-[8px] font-black text-foreground/30 uppercase tracking-[0.2em] block">{label}</span>
-        <span className="text-[11px] font-black text-foreground/80 uppercase">{value}</span>
-     </div>
-  )
-}
 
 function StatusStep({ label, completed, loading }: { label: string, completed: boolean, loading: boolean }) {
   return (
@@ -403,5 +381,28 @@ function ShieldCheck({ className }: { className?: string }) {
     >
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
     </svg>
+  )
+}
+function FeeRow({ label, value }: { label: string, value: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-[8px] font-black text-foreground/30 uppercase tracking-[0.2em]">{label}</div>
+      <div className="text-[10px] font-mono text-foreground font-medium">{value}</div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, subValue, trend, trendColor }: { label: string, value: string, subValue?: string, trend?: string, trendColor?: string }) {
+  return (
+    <div className="bg-white/5 border border-border/20 rounded-[32px] p-6 space-y-2">
+      <div className="text-[9px] font-black text-foreground/40 uppercase tracking-widest">{label}</div>
+      <div className="flex items-baseline gap-2">
+        <div className="text-xl font-bold tracking-tight">{value}</div>
+        {trend && <div className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full", trendColor)}>
+          {trend}
+        </div>}
+      </div>
+      {subValue && <div className="text-[10px] font-mono text-foreground/40">{subValue}</div>}
+    </div>
   )
 }

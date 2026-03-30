@@ -1,3 +1,5 @@
+import { Abi } from 'viem';
+
 export const RWAVaultABI = [
   {
     "inputs": [
@@ -634,8 +636,7 @@ export const RWAVaultABI = [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-]
- as const;
+] as const as Abi;
 
 export const ObolusOracleABI = [
   {
@@ -896,8 +897,7 @@ export const ObolusOracleABI = [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-]
- as const;
+] as const as Abi;
 
 export const MockERC20ABI = [
   {
@@ -1209,31 +1209,9 @@ export const MockERC20ABI = [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-]
- as const;
+] as const as Abi;
 
 export const ERC20ABI = [
-  {
-    "name": "approve",
-    "type": "function",
-    "stateMutability": "nonpayable",
-    "inputs": [
-      {
-        "name": "spender",
-        "type": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ]
-  },
   {
     "name": "balanceOf",
     "type": "function",
@@ -1252,55 +1230,6 @@ export const ERC20ABI = [
     ]
   },
   {
-    "name": "allowance",
-    "type": "function",
-    "stateMutability": "view",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "name": "spender",
-        "type": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ]
-  },
-  {
-    "name": "mint",
-    "type": "function",
-    "stateMutability": "nonpayable",
-    "inputs": [
-      {
-        "name": "to",
-        "type": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "outputs": []
-  },
-  {
-    "name": "symbol",
-    "type": "function",
-    "stateMutability": "view",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "string"
-      }
-    ]
-  },
-  {
     "name": "decimals",
     "type": "function",
     "stateMutability": "view",
@@ -1312,4 +1241,4 @@ export const ERC20ABI = [
       }
     ]
   }
-] as const;
+] as const as Abi;
