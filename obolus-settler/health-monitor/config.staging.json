@@ -1,0 +1,7 @@
+{
+  "schedule": "*/60 * * * * *",
+  "obolusApiUrl": "http://localhost:3000/api/v1",
+  "oracleAddress": "0xb0ab8015Ce10593eE9a26E78B0BeDBc21330ba23",
+  "chainId": 97,
+  "rpcUrl": "https://data-seed-prebsc-1-s1.binance.org:8545"
+}

@@ -15,7 +15,8 @@ export default function Page() {
   const { data: userProfile } = useUserProfile()
   const { data: platformTvl } = usePlatformTVL()
   const { data: positionsData } = useVaultPositions()
-  const recentTxns = useRecentTransactions()
+  const { data: recentTxnsData } = useRecentTransactions()
+  const recentTxns = recentTxnsData?.transactions ?? []
 
   if (!isConnected) {
     return <LandingPage />

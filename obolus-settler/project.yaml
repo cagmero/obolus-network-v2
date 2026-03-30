@@ -1,0 +1,14 @@
+name: obolus-protocol
+settings:
+  staging-settings:
+    rpcs:
+      - chain_id: 97
+        url: "https://data-seed-prebsc-1-s1.binance.org:8545"
+      - chain_id: 56
+        url: "https://bsc-dataseed.binance.org"
+  production-settings:
+    rpcs:
+      - chain_id: 97
+        url: "https://data-seed-prebsc-1-s1.binance.org:8545"
+      - chain_id: 56
+        url: "https://bsc-dataseed.binance.org"

@@ -1,0 +1,9 @@
+{
+  "name": "obolus-execute-transfers",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@chainlink/cre-sdk": "latest",
+    "viem": "^2.45.2"
+  }
+}

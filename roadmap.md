@@ -2,13 +2,16 @@
 
 ## V1 — Privacy Equity Vault (Live — March 2026)
 - ERC-4626 RWAVault.sol accepting TSLAon, NVDAon, SPYon, QQQon on BNB Chain
-- ECIES-encrypted balances via Chainlink CRE — nobody sees your positions
-- PositionManager.sol — encrypted per-user per-token holdings
+- ECIES-encrypted positions via Chainlink CRE — nobody sees your holdings
+- Pool wallet pattern — individual positions untraceable on-chain
+- Three-layer trust model: Custody / Blind Storage / CRE Settlement
+- EIP-712 authenticated user actions
 - ObolusOracle.sol — wraps Ondo SyntheticSharesOracle for real-time NAV
 - wGM vault shares — encrypted ERC-4626 receipt tokens
 - Deposit / withdraw as GM tokens or USDon
 - BSC Mainnet + BSC Testnet
 - Frontend: Vault, Portfolio, Markets, Privacy, Transactions
+- CRE Workflows: settle-positions (30s), execute-transfers (15s), health-monitor (60s)
 
 ## V1.5 — Private Transfers (Q2 2026)
 - Encrypted transfer amounts — not just balances

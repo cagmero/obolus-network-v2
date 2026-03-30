@@ -1,0 +1,6 @@
+{
+  "schedule": "*/15 * * * * *",
+  "obolusApiUrl": "http://localhost:3000/api/v1",
+  "vaultAddress": "0x772C9513fFcffaed224048b3e22AcF9E58854b73",
+  "chainId": 97
+}

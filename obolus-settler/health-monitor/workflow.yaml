@@ -1,0 +1,20 @@
+name: obolus-health-monitor
+owner: obolus-protocol
+triggers:
+  - type: cron
+    config:
+      schedule: "*/60 * * * * *"  # Every 60 seconds
+consensus:
+  - type: offchain_consensus
+    config:
+      aggregation_method: AGGREGATION_MODE
+      aggregation_config:
+        allowedFaultPercent: 0
+      encoder: EVM
+      encoder_config:
+        abi: "(bytes report)"
+targets:
+  - type: write_chain
+    config:
+      deltaStage: "10s"
+      schedule: "oneAtATime"

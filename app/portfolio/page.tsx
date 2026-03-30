@@ -33,7 +33,7 @@ import { VAULTS } from '@/lib/vaults'
 import { CONTRACT_ADDRESSES } from '@/lib/wagmi'
 import Link from 'next/link'
 import { useAccount } from 'wagmi'
-import { decryptData } from '@/lib/encryption'
+import { decryptUserData } from '@/lib/encryption'
 import { useObolusAuth, useNAVHistory } from '@/hooks/useVaults'
 import NAVChart from '@/components/NAVChart'
 
@@ -71,7 +71,7 @@ export default function PortfolioPage() {
       addLog("EIP712_SIGNATURE_CAPTURED", "success", "VERIFIED")
       
       addLog("DERIVING_DECRYPTION_KEYS", "info", "PROCESSING")
-      await decryptData("ENCRYPTED_BLOB", signature)
+      await decryptUserData("ENCRYPTED_BLOB", signature)
       addLog("CLIENT_SIDE_DECRYPTION_SUCCESS", "success", "UNLOCKED")
       
       setShowValues(true)

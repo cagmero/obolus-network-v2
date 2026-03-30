@@ -1,0 +1,10 @@
+{
+  "name": "obolus-settle-positions",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@chainlink/cre-sdk": "latest",
+    "eciesjs": "^0.4.18",
+    "viem": "^2.45.2"
+  }
+}
