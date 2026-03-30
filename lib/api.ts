@@ -23,7 +23,13 @@ export const api = {
     if (signature) headers.set('x-signature', signature);
     if (nonce) headers.set('x-nonce', nonce);
 
-    const url = endpoint.startsWith('http') ? endpoint : `${SERVER_URL}${endpoint}`;
+    const cleanEndpoint = endpoint.startsWith('/api/v1') 
+      ? endpoint.substring(7) 
+      : endpoint;
+      
+    const url = endpoint.startsWith('http') 
+      ? endpoint 
+      : `${SERVER_URL}${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
     
     console.log(`[OBOLUS:API] → ${fetchOptions.method || 'GET'} ${endpoint}`);
 
