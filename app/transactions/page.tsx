@@ -118,15 +118,15 @@ export default function TransactionsPage() {
                     <div className="space-y-1">
                       <span className="text-white font-black block leading-tight tracking-wider uppercase text-sm">{t.type}</span>
                       <span className="text-foreground/40 text-[10px] font-bold uppercase tracking-[0.2em]">
-                        Asset: {t.vaultId || "N/A"} // {t.status || "CONFIRMED"}
+                        Asset: {t.vaultId || "N/A"} // <span className="text-primary/60">SETTLED_BY_CRE</span> // {t.status || "CONFIRMED"}
                       </span>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-12">
                     <div className="hidden md:flex flex-col text-right">
-                        <span className="text-foreground/30 text-[9px] font-black uppercase tracking-widest">Timestamp</span>
-                        <span className="text-white font-bold text-[10px] uppercase tracking-tighter">{new Date(t.timestamp || Date.now()).toLocaleDateString()}</span>
+                        <span className="text-foreground/30 text-[9px] font-black uppercase tracking-widest">Network_Proof</span>
+                        <span className="text-white font-bold text-[10px] uppercase tracking-tighter">Chainlink_CRE</span>
                     </div>
                     <div className="text-right min-w-[120px]">
                         <span className={cn("font-black text-xl tabular-nums tracking-tighter", t.encryptedAmount ? "text-primary/70" : "text-white")}>

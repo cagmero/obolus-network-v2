@@ -18,6 +18,7 @@ interface NAVChartProps {
   data: { timestamp: string; nav: number }[]
   userAddress: string
   isLoading?: boolean
+  blurred?: boolean
 }
 
 const RANGES = ['1W', '1M', '3M', 'ALL']
@@ -26,6 +27,7 @@ export default function NAVChart({
   data,
   userAddress,
   isLoading = false,
+  blurred = false,
 }: NAVChartProps) {
   const [timeRange, setTimeRange] = React.useState('1M')
 
@@ -81,10 +83,14 @@ export default function NAVChart({
                   <span className="text-[9px] font-black text-foreground/40 uppercase tracking-widest">{stat.label}</span>
                   {stat.isEncrypted && <Lock className="size-3 text-primary/40" />}
                </div>
-               <div className={cn("text-xl font-black tabular-nums tracking-tighter", stat.color)}>
-                  {stat.value}
-               </div>
-            </div>
+                <div className={cn(
+                  "text-xl font-black tabular-nums tracking-tighter transition-all duration-700", 
+                  stat.color,
+                  blurred && "blur-md opacity-20"
+                )}>
+                   {blurred ? "$XX,XXX" : stat.value}
+                </div>
+             </div>
         ))}
       </div>
 
@@ -120,7 +126,15 @@ export default function NAVChart({
         </div>
 
         {/* Chart */}
-        <div className="h-[350px] w-full relative">
+        <div className={cn("h-[350px] w-full relative transition-all duration-1000", blurred && "blur-xl opacity-20 scale-[0.98]")}>
+            {blurred && (
+               <div className="absolute inset-0 z-20 flex items-center justify-center">
+                  <div className="bg-black/60 border border-white/10 px-6 py-3 rounded-2xl flex items-center gap-3 shadow-2xl backdrop-blur-md">
+                     <Lock className="size-4 text-primary animate-pulse" />
+                     <span className="text-[10px] font-black tracking-[0.2em] text-white uppercase">Data_Shielded // Sign_to_Reveal</span>
+                  </div>
+               </div>
+            )}
             <ResponsiveContainer width="100%" height="100%">
                <LineChart data={data}>
                   <defs>

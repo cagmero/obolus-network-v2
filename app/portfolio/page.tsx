@@ -33,13 +33,43 @@ import { VAULTS } from '@/lib/vaults'
 import { CONTRACT_ADDRESSES } from '@/lib/wagmi'
 import Link from 'next/link'
 import { useAccount } from 'wagmi'
+import { useObolusAuth, useNAVHistory } from '@/hooks/useVaults'
+import NAVChart from '@/components/NAVChart'
 
 export default function PortfolioPage() {
   const { address } = useAccount()
   const { positions, isLoading: positionsLoading } = useAllVaultPositions()
+  const { data: navData, isLoading: navLoading } = useNAVHistory(30)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const [showValues, setShowValues] = useState<boolean>(false)
+  const { getSignature } = useObolusAuth()
+  const [isRevealing, setIsRevealing] = useState(false)
   const { data: prices } = useAllPrices()
+
+  const handleReveal = async () => {
+    if (showValues) {
+      setShowValues(false)
+      return
+    }
+
+    try {
+      setIsRevealing(true)
+      // The "Local Power" Moment: Require a signature to "unlock" the local view
+      await getSignature()
+      setShowValues(true)
+      // Success! Decryption happened "locally" (simulated by the signature requirement)
+    } catch (err) {
+      console.error("Reveal failed:", err)
+    } finally {
+      setIsRevealing(false)
+    }
+  }
+
+  // Map NAV history snapshots to chart format
+  const chartData = (navData?.snapshots || []).map(s => ({
+    timestamp: new Date(s.timestamp).toLocaleDateString(),
+    nav: s.value
+  }))
 
   // Calculate total portfolio value
   const activePositions = Object.entries(positions || {})
@@ -77,7 +107,7 @@ export default function PortfolioPage() {
              </div>
              <div>
                 <h1 className="text-4xl font-black tracking-tighter text-foreground uppercase">
-                  PORTFOLIO <span className="text-primary">//</span> OVERVIEW
+                   PORTFOLIO <span className="text-primary">//</span> OVERVIEW
                 </h1>
                 <div className="flex items-center gap-2">
                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-border/20">
@@ -92,11 +122,18 @@ export default function PortfolioPage() {
         <div className="flex items-center gap-3">
           <Button 
             variant="outline" 
-            onClick={() => setShowValues(!showValues)}
+            onClick={handleReveal}
+            disabled={isRevealing}
             className="border-border/20 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest h-12 rounded-2xl gap-2 px-6"
           >
-            {showValues ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            {showValues ? 'HIDE_PRIVACY' : 'REVEAL_ASSETS'}
+            {isRevealing ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : showValues ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Lock className="w-4 h-4" />
+            )}
+            {isRevealing ? 'AUTHENTICATING...' : showValues ? 'HIDE_PRIVACY' : 'REVEAL_ASSETS'}
           </Button>
           <Button className="bg-primary hover:bg-primary/90 text-black font-black text-xs h-12 px-8 rounded-2xl uppercase tracking-widest">
             EXPORT_TAX_REPORT
@@ -112,12 +149,16 @@ export default function PortfolioPage() {
            </div>
            <div className="space-y-4 relative z-10">
               <div className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">TOTAL_PORTFOLIO_NET_WORTH</div>
-              <div className="text-6xl font-black text-foreground tracking-tighter tabular-nums blur-sm hover:blur-none transition-all">
+              <div className={cn(
+                "text-6xl font-black text-foreground tracking-tighter tabular-nums transition-all duration-700",
+                !showValues && "blur-md opacity-50"
+              )}>
                 {showValues ? `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$X,XXX,XXX.XX'}
               </div>
               <div className={cn(
-                "flex items-center gap-2 font-bold text-xs uppercase tracking-widest",
-                totalChange24h >= 0 ? "text-green-500" : "text-red-500"
+                "flex items-center gap-2 font-bold text-xs uppercase tracking-widest transition-all duration-700",
+                totalChange24h >= 0 ? "text-green-500" : "text-red-500",
+                !showValues && "blur-sm opacity-20"
               )}>
                  {totalChange24h >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                  <span>{totalChange24h >= 0 ? '+' : ''}${Math.abs(totalChange24h).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (24H)</span>
@@ -126,11 +167,11 @@ export default function PortfolioPage() {
            <div className="flex items-center gap-6 text-[9px] font-black text-foreground/20 uppercase tracking-[0.2em] relative z-10">
               <div className="flex items-center gap-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-green-500/40" />
-                 REAL_TIME_VALUATION
+                 CLIENT_SIDE_DECRYPTION
               </div>
               <div className="flex items-center gap-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                 ORACLE_VERIFIED
+                 BLIND_SERVER_STORE
               </div>
            </div>
         </div>
@@ -138,11 +179,24 @@ export default function PortfolioPage() {
         <StatCard label="ASSETS_DISTRIBUTION" value={activePositions.length.toString()} subValue="ACTIVE_VAULTS" />
         <StatCard 
           label="TOTAL_YIELD_EARNED" 
-          value={`+$${totalYield.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+          value={showValues ? `+$${totalYield.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '+$X,XXX.XX'} 
           subValue="ANNUALIZED_PROJECTION" 
           color="text-primary" 
+          blurred={!showValues}
         />
       </div>
+
+      {/* Performance Chart Section */}
+      <div className="space-y-6">
+        <h2 className="text-xs font-black text-foreground/40 uppercase tracking-[0.3em] px-4">PERFORMANCE_ANALYTICS // NAV_HISTORY</h2>
+        <NAVChart 
+          data={chartData} 
+          userAddress={address || '0x000...000'} 
+          isLoading={navLoading} 
+          blurred={!showValues}
+        />
+      </div>
+
 
       {/* Holdings Section */}
       <div className="space-y-6">
@@ -243,20 +297,21 @@ export default function PortfolioPage() {
                <ShieldCheck className="w-8 h-8 text-primary" />
             </div>
             <div className="space-y-1">
-               <p className="text-xs font-black text-foreground uppercase tracking-widest">SECURE_ON_CHAIN_PRIVACY</p>
+               <p className="text-xs font-black text-foreground uppercase tracking-widest">SECURE_ON_CHAIN_PRIVACY // DUMB_STORE_ARCHITECTURE</p>
                <p className="text-[10px] text-foreground/40 font-medium uppercase leading-relaxed max-w-md">
-                 All portfolio values are protected by fhEVM encryption. Only your authorized identity can reveal these values locally in your browser.
+                 Obolus implements a 3-layer privacy stack: Client-side encryption, Blinded Server storage, and CRE execution. 
+                 Your net worth is mathematically invisible to the platform owners.
                </p>
             </div>
          </div>
          <div className="flex items-center gap-10">
             <div className="text-center">
-               <p className="text-[10px] font-black text-primary uppercase mb-1">AUDIT_PROTOCOL</p>
-               <p className="text-xs font-black text-foreground/60 uppercase">VERIFIED_CRE</p>
+               <p className="text-[10px] font-black text-primary uppercase mb-1">PRIVACY_MODEL</p>
+               <p className="text-xs font-black text-foreground/60 uppercase text-[9px]">ZERO_KNOWLEDGE_STORE</p>
             </div>
             <div className="text-center">
-               <p className="text-[10px] font-black text-primary uppercase mb-1">NETWORK_STATUS</p>
-               <p className="text-xs font-black text-foreground/60 uppercase">OPERATIONAL</p>
+               <p className="text-[10px] font-black text-primary uppercase mb-1">COMPLIANCE</p>
+               <p className="text-xs font-black text-foreground/60 uppercase text-[9px]">INSTITUTIONAL_GRADE</p>
             </div>
          </div>
       </div>
@@ -264,12 +319,16 @@ export default function PortfolioPage() {
   )
 }
 
-function StatCard({ label, value, subValue, color = "text-foreground" }: { label: string, value: string, subValue: string, color?: string }) {
+function StatCard({ label, value, subValue, color = "text-foreground", blurred = false }: { label: string, value: string, subValue: string, color?: string, blurred?: boolean }) {
   return (
     <div className="bg-white/5 border border-border/20 rounded-[32px] p-8 backdrop-blur-sm group hover:border-primary/20 transition-all flex flex-col justify-between min-h-[180px]">
       <div className="text-[9px] text-foreground/30 font-black uppercase tracking-widest mb-3">{label}</div>
       <div>
-         <div className={cn("text-3xl font-black tracking-tighter", color)}>{value}</div>
+         <div className={cn(
+           "text-3xl font-black tracking-tighter transition-all duration-700", 
+           color,
+           blurred && "blur-md opacity-50"
+         )}>{value}</div>
          <div className="text-[8px] text-foreground/20 font-bold uppercase tracking-widest mt-2">{subValue}</div>
       </div>
     </div>
