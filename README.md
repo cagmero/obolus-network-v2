@@ -1,42 +1,67 @@
-# Obolus V1 — Privacy Equity Vault
+# Obolus Network V2 (Protocol) 🌌
 
-## What It Is
-Privacy-preserving tokenized equity vault on BNB Chain. 
-Deposit Ondo Global Markets (GM) tokens (TSLAon, NVDAon, SPYon, QQQon) — tokenized versions of real-world US equities.
-Positions are encrypted via **Zama fhEVM**, ensuring that holdings and balances are completely private on-chain.
+The core application of the **Obolus Network** ecosystem. This frontend allows users to privately manage a portfolio of tokenized equities on **BNB Chain**.
 
-## Features
-- **Shielded Positions**: All user holdings are stored as encrypted ciphertexts.
-- **On-chain Privacy**: Contract logic operates on encrypted data without ever seeing the plaintext.
-- **RWA Exposure**: Direct access to US equities (Tesla, Nvidia, S&P 500) via Ondo GM tokens.
-- **Confidential Analytics**: View your portfolio and share prices privately using browser-side decryption.
+## 🏗️ Technical Architecture
 
-## Live Demo
-[app.obolus.network](https://app.obolus.network)
+Obolus V2 uses a robust, on-chain first architecture for managing privacy-preserving assets:
 
-## Tech Stack
-- **Network**: BNB Chain (Mainnet + Testnet)
-- **Encryption**: Zama fhEVM (Fully Homomorphic Encryption)
-- **Assets**: Ondo Global Markets GM Tokens
-- **Frontend**: Next.js 15, wagmi, viem, RainbowKit
-- **Standards**: ERC-4626 (Tokenized Vault Standard)
+### 1. **Centralized Hook System**
+We use a specialized hook layer in `hooks/` to manage all blockchain and server state:
+- `useContracts.ts`: Real-time on-chain data retrieval from **BSC Testnet** for balances and oracle values.
+- `useContractWrite.ts`: Multi-step transaction flows (`useDepositFlow`, `useWithdrawFlow`) that handle on-chain execution and server-side state persistence.
+- `useMarketData.ts`: Combines live stock data (via **Twelve Data**) with on-chain settlement multipliers from **Ondo Finance**.
 
-## Contracts (BSC Testnet)
-- **RWAVault**: `0x489675685B62bB958B5C9672777A464aBb31B299`
-- **PositionManager**: `0xe7Af7E8E7e9e8790EbB143e90bB3f0512`
-- **ObolusOracle**: `0x91f8Aff3738825e8eB16FC6f6b1A7A4647bDB299`
+### 2. **Wagmi & RainbowKit Integration**
+Native Web3 connectivity on **BSC Testnet** with a customized **Neon Confidential** theme.
 
-## Running Locally
+### 3. **Privacy Reveal Mechanism**
+Leveraging **fhEVM**, user balances are stored as encrypted ciphertexts. The UI features a "Privacy Reveal" toggle that locally decrypts these values for the user.
 
-1. Clone the repository
-2. Install dependencies:
+---
+
+## 📡 Live Protocol Addresses (BSC Testnet)
+
+The protocol is currently deployed and verified at the following addresses:
+
+- **RWAVault**: `0xe5323C5df26330ce14E9a7BeCd19a272C730A58f`
+- **ObolusOracle**: `0x323e71E1C931B2A10996D98E561A7A4647bDB299` (Note: Updated address)
+- **GM Tokens (9 Assets)**: Including **TSLAx**, **NVDAon**, **AMZNon**, and more.
+
+---
+
+## 🛠️ Development Setup
+
+### Installation
 ```bash
 npm install
 ```
-3. Run dev server:
+
+### Environment Variables
+Create a `.env.local` with the following:
+```bash
+NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+NEXT_PUBLIC_BSC_RPC=https://data-seed-prebsc-1-s1.binance.org:8545
+```
+
+### Running Locally
 ```bash
 npm run dev
 ```
 
-## Hackathon
-Developed for **RWA Demo Day — BNB Chain — March 2026**
+---
+
+## 📁 Project Structure
+
+- `app/`: Next.js App Router (Faucet, Vaults, Portfolio, Markets).
+- `hooks/`: Specialized Web3 and API interaction hooks.
+- `lib/`: Centralized ABIs, API client, and Wagmi configuration.
+- `components/`: UI components using the "Neon Confidential" design system.
+
+## 🏆 RWA Demo Day
+This project was developed for the **BNB Chain RWA Demo Day (March 2026)** to showcase the fusion of institutional privacy and RWA liquidity.
+
+---
+<div align="center">
+  <p>© 2026 OBOLUS NETWORK | Built on BNB Chain</p>
+</div>
