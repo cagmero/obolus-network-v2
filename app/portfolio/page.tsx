@@ -35,7 +35,8 @@ import NAVChart from '@/components/NAVChart'
 export default function PortfolioPage() {
   const { address } = useAccount()
   const { positions } = useAllVaultPositions()
-  const { data: navData, isLoading: navLoading } = useNAVHistory(30)
+  const { data: navData, isLoading: navLoading } = useNAVHistory(30, Object.entries(positions || {}).map(([symbol, p]) => ({ symbol, ...p })))
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const [showValues, setShowValues] = useState<boolean>(false)
   const { } = useObolusAuth()

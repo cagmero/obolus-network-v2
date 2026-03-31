@@ -4,7 +4,17 @@ import { TOKEN_ADDRESSES } from './tokenAddresses';
 export const DEFI_ADDRESSES = {
   oUSD: '0xfCaBa68297d86E56e01E8e9CcB88AF06bc093b9E' as `0x${string}`,
   ObolusAMM: '0x41a6493078fCF8D554DF94769F9B3b201756cb58' as `0x${string}`,
-  LendingPools: {} as Record<string, `0x${string}`>,  // Deploy with more tBNB
+  LendingPools: {
+    TSLAx: '0x5f9d7404A79B74A146B35E43CD8399Dea704CEb7',
+    AAPLx: '0x9f3f6C24c3535e971bBAF501AAaF2047C148D188',
+    NVDAon: '0xb9cc94eE9167d639040e3a191998fe7E13100442',
+    GOOGLx: '0x8C5B1336cd7D10B82dEA59E43Aa4FA1E3d248f37',
+    SPYx: '0x2ab76EDf3DD8a266aA2759A8fcC1FBBD70C3615E',
+    CRCLX: '0xC12a6bc96BDF45712b9eA72B39D968a8fc61f6B8',
+    MUon: '0x94D2C848edF58cEE491f40afC28dCAb09d2fe26F',
+    QQQon: '0x7a53B3eA7d5aEc8516698dA1bf21D4D0de5fC879',
+    AMZNon: '0x617d818dc900Bb6fAa8f8F56979fD22f54E910e7',
+  } as Record<string, `0x${string}`>, // Deployed on BSC Testnet
 } as const;
 
 // Token list for the swap UI

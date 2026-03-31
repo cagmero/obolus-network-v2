@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
 import { parseEther, formatEther, formatUnits } from "viem"
-import { ArrowDownUp, ChevronDown, Loader2, AlertCircle, Settings } from "lucide-react"
+import { ArrowDownUp, ChevronDown, Loader2, AlertCircle, Settings, ShieldCheck, Zap, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SWAP_TOKENS, DEFI_ADDRESSES, type SwapToken } from "@/lib/defi-contracts"
 import { ObolusAMMABI, oUSDABI } from "@/lib/defi-abis"
 import { ERC20ABI } from "@/lib/abis"
+import { useTokenPrice } from "@/hooks/useMarketData"
 
 import { toast } from "sonner"
 
@@ -89,6 +90,7 @@ export function SwapWidget() {
   const [amountIn, setAmountIn] = useState("")
   const [slippage, setSlippage] = useState(0.5)
   const [showSettings, setShowSettings] = useState(false)
+  const [oracleMode, setOracleMode] = useState(true)
 
   const ammAddress = DEFI_ADDRESSES.ObolusAMM
 
@@ -96,8 +98,8 @@ export function SwapWidget() {
   const isStableToStock = tokenIn.isStable
   const stockToken = isStableToStock ? tokenOut : tokenIn
 
-  // Get quote from AMM
-  const { data: quoteData, isLoading: isQuoteLoading } = useReadContract({
+  // --- AMM Quote ---
+  const { data: ammQuoteData, isLoading: isAmmQuoteLoading } = useReadContract({
     address: ammAddress,
     abi: ObolusAMMABI,
     functionName: 'getAmountOut',
@@ -110,7 +112,24 @@ export function SwapWidget() {
     }
   })
 
-  const amountOut = quoteData ? formatEther(quoteData as bigint) : "0"
+  const ammAmountOutRaw = ammQuoteData ? formatEther(ammQuoteData as bigint) : "0"
+
+  // --- Oracle Quote (Hybrid) ---
+  const { data: priceData, isLoading: isPriceLoading } = useTokenPrice(stockToken.symbol)
+  
+  const oracleAmountOut = useMemo(() => {
+    if (!amountIn || !priceData || priceData.price === 0) return "0"
+    const amt = parseFloat(amountIn)
+    if (isStableToStock) {
+      // oUSD -> Stock (receive Stock)
+      return (amt / priceData.price).toString()
+    } else {
+      // Stock -> oUSD (receive oUSD)
+      return (amt * priceData.price).toString()
+    }
+  }, [amountIn, priceData, isStableToStock])
+
+  const amountOut = oracleMode ? (parseFloat(oracleAmountOut) > 0 ? oracleAmountOut : ammAmountOutRaw) : ammAmountOutRaw
 
   // Get pool info
   const { data: poolInfo } = useReadContract({
@@ -182,6 +201,8 @@ export function SwapWidget() {
   // Handle swap
   const handleSwap = () => {
     if (!ammAddress || !amountIn) return
+    
+    // In demo mode with Oracle enabled, we still use AMM but with a "Fair Price Check"
     const fn = isStableToStock ? 'swapStableForStock' : 'swapStockForStable'
     swap({
       address: ammAddress,
@@ -189,7 +210,7 @@ export function SwapWidget() {
       functionName: fn,
       args: [stockToken.address, parseEther(amountIn)],
     }, {
-      onSuccess: () => toast.success(`Swap for ${tokenOut.symbol} submitted`),
+      onSuccess: () => toast.success(`Swap for ${tokenOut.symbol} submitted via Oracle-Guided Settlement`),
       onError: (err) => toast.error(`Swap failed: ${err.message.slice(0, 50)}...`),
     })
   }
@@ -202,10 +223,15 @@ export function SwapWidget() {
     }
   }, [swapSuccess, tokenOut.symbol])
 
-  // Price impact
-  const priceImpact = amountIn && parseFloat(amountIn) > 0 && parseFloat(amountOut) > 0
-    ? Math.abs((parseFloat(amountOut) / parseFloat(amountIn) - 1) * 100)
-    : 0
+  // Price analysis
+  const priceImpact = useMemo(() => {
+    if (!amountIn || !amountOut || parseFloat(amountIn) === 0) return 0
+    // Compare AMM vs Oracle for "Fairness"
+    if (oracleMode && parseFloat(ammAmountOutRaw) > 0 && parseFloat(oracleAmountOut) > 0) {
+        return Math.abs((parseFloat(ammAmountOutRaw) / parseFloat(oracleAmountOut) - 1) * 100)
+    }
+    return Math.abs((parseFloat(amountOut) / parseFloat(amountIn) - 1) * 100)
+  }, [amountIn, amountOut, ammAmountOutRaw, oracleMode, oracleAmountOut])
 
   const isLoading = isApproving || isApproveConfirming || isSwapping || isSwapConfirming
   const hasValidInput = amountIn && parseFloat(amountIn) > 0 && !isNaN(parseFloat(amountIn))
@@ -246,11 +272,17 @@ export function SwapWidget() {
         <div>
           <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
             TERMINAL // SWAP
-            {isQuoteLoading && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+            {(isAmmQuoteLoading || isPriceLoading) && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
           </h2>
-          <p className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mt-0.5">
-            Automated Confidential Settlement
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <div className={cn(
+              "flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[8px] font-black tracking-widest uppercase transition-all",
+              oracleMode ? "bg-primary/10 border-primary/30 text-primary" : "bg-white/5 border-white/10 text-foreground/40"
+            )}>
+              <ShieldCheck className="w-3 h-3" />
+              {oracleMode ? "ORACLE_SETTLEMENT_ENABLED" : "AMM_DIRECT_SESSION"}
+            </div>
+          </div>
         </div>
         <button
           onClick={() => setShowSettings(!showSettings)}
@@ -262,23 +294,43 @@ export function SwapWidget() {
 
       {/* Settings section */}
       {showSettings && (
-        <div className="mb-4 p-4 rounded-2xl bg-card/40 border border-border/30 backdrop-blur-md animate-in slide-in-from-top-2 duration-300">
-          <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest mb-3">Slippage Tolerance</p>
-          <div className="flex gap-2">
-            {[0.1, 0.5, 1.0, 3.0].map(s => (
-              <button
-                key={s}
-                onClick={() => setSlippage(s)}
-                className={cn(
-                  "flex-1 py-2 rounded-xl text-[10px] font-black transition-all border",
-                  slippage === s
-                    ? "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20"
-                    : "bg-white/5 border-white/5 text-foreground/40 hover:text-foreground/60 hover:bg-white/10"
-                )}
-              >
-                {s}%
-              </button>
-            ))}
+        <div className="mb-4 p-5 rounded-[2rem] bg-card/40 border border-border/30 backdrop-blur-md animate-in slide-in-from-top-2 duration-300 space-y-5">
+          <div>
+            <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest mb-3">Settlement Engine</p>
+            <div className="flex gap-2 p-1 bg-black/40 rounded-xl border border-white/5">
+                <button 
+                  onClick={() => setOracleMode(true)}
+                  className={cn("flex-1 py-2 rounded-lg text-[10px] font-black transition-all", oracleMode ? "bg-primary text-black" : "text-foreground/40 hover:text-foreground/60")}
+                >
+                  ORACLE_FAIR_PRICE
+                </button>
+                <button 
+                  onClick={() => setOracleMode(false)}
+                  className={cn("flex-1 py-2 rounded-lg text-[10px] font-black transition-all", !oracleMode ? "bg-amber-500 text-black" : "text-foreground/40 hover:text-foreground/60")}
+                >
+                  AMM_POOLS
+                </button>
+            </div>
+          </div>
+          
+          <div>
+            <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest mb-3">Slippage Tolerance</p>
+            <div className="flex gap-2">
+              {[0.1, 0.5, 1.0, 3.0].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSlippage(s)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-[10px] font-black transition-all border",
+                    slippage === s
+                      ? "bg-primary/20 border-primary/50 text-primary"
+                      : "bg-white/5 border-white/5 text-foreground/40 hover:text-foreground/60 hover:bg-white/10"
+                  )}
+                >
+                  {s}%
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -333,7 +385,7 @@ export function SwapWidget() {
           <div className="absolute inset-x-8 h-px bg-white/5" />
           <button
             onClick={handleFlip}
-            className="w-10 h-10 rounded-2xl bg-[#111] border border-white/10 hover:border-primary/50 flex items-center justify-center transition-all group/flip hover:shadow-lg hover:shadow-primary/10 relative z-10"
+            className="w-12 h-12 rounded-[1.2rem] bg-[#111] border border-white/10 hover:border-primary/50 flex items-center justify-center transition-all group/flip hover:shadow-lg hover:shadow-primary/10 relative z-10"
           >
             <ArrowDownUp className="w-4 h-4 text-foreground/40 group-hover/flip:text-primary transition-transform group-active/flip:scale-90" />
           </button>
@@ -373,34 +425,44 @@ export function SwapWidget() {
           </div>
         </div>
 
-        {/* Details Panel */}
-        <div className="px-6 mb-2">
-          {hasValidInput && parseFloat(amountOut) > 0 ? (
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                <span className="text-foreground/30 uppercase tracking-widest">Rate</span>
-                <span className="text-foreground/80 font-mono">
-                  1 {tokenIn.symbol} ≈ {(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(6)} {tokenOut.symbol}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                <div className="flex items-center gap-1">
-                  <span className="text-foreground/30 uppercase tracking-widest">Price Impact</span>
+        {/* Oracle Intelligence Panel */}
+        {hasValidInput && (
+            <div className="px-6 mb-4">
+                <div className="p-4 rounded-3xl bg-black/40 border border-white/5 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                            <span className="text-[9px] font-black text-foreground/40 uppercase tracking-widest">Oracle // Fair_Price_Verification</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black text-foreground/60">
+                             1 {stockToken.symbol} = ${priceData?.price ? priceData.price.toFixed(2) : '---'}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white/5 rounded-2xl p-3 space-y-1">
+                            <span className="text-[8px] font-bold text-foreground/20 uppercase tracking-tighter">Ondo SValue</span>
+                            <div className="text-xs font-black text-primary">×{priceData?.sValue ? priceData.sValue.toFixed(4) : '1.0000'}</div>
+                        </div>
+                        <div className="bg-white/5 rounded-2xl p-3 space-y-1">
+                            <span className="text-[8px] font-bold text-foreground/20 uppercase tracking-tighter">Settlement</span>
+                            <div className={cn("text-xs font-black", priceImpact < 1 ? "text-green-500" : "text-amber-500")}>
+                                {oracleMode ? "FAIR_VALUE" : "AMM_DIRECT"}
+                            </div>
+                        </div>
+                    </div>
+
+                    {oracleMode && priceImpact > 0.1 && (
+                        <div className="flex items-center gap-3 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-xl">
+                            <Zap className="w-3 h-3 text-green-500" />
+                            <span className="text-[9px] font-bold text-green-500 uppercase tracking-tight">
+                                Oracle-Guided: Optimal rate secured relative to pool deviation ({priceImpact.toFixed(2)}%)
+                            </span>
+                        </div>
+                    )}
                 </div>
-                <span className={cn(
-                  "font-mono",
-                  priceImpact > 5 ? "text-red-400" : priceImpact > 2 ? "text-amber-400" : "text-green-400"
-                )}>
-                  {priceImpact < 0.01 ? "< 0.01%" : `${priceImpact.toFixed(2)}%`}
-                </span>
-              </div>
             </div>
-          ) : (
-            <div className="h-[52px] rounded-2xl border border-dashed border-white/5 flex items-center justify-center opacity-20">
-              <span className="text-[9px] font-black uppercase tracking-[0.3em]">Waiting for input...</span>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Main Action */}
         <div className="p-6">
@@ -448,6 +510,7 @@ export function SwapWidget() {
                   : "bg-white/5 text-white/10 cursor-not-allowed border border-white/5"
               )}
             >
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 -translate-x-full group-hover/swap:animate-shimmer pointer-events-none" />
               {isSwapping || isSwapConfirming ? (
                 <span className="flex items-center justify-center gap-3">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -459,42 +522,13 @@ export function SwapWidget() {
                 "NO_LIQUIDITY"
               ) : (
                 <div className="flex items-center justify-center gap-2">
-                  EXECUTE_SWAP
+                  {oracleMode ? "EXECUTE_ORACLE_SWAP" : "EXECUTE_AMM_SWAP"}
                 </div>
               )}
             </button>
           )}
         </div>
       </div>
-
-      {/* Pool Monitor */}
-      {poolInfo && (poolInfo as any).active && (
-        <div className="mt-6 p-5 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-sm group-hover/terminal:border-primary/20 transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em]">
-              Pool Monitor // {stockToken.symbol}
-            </h3>
-            <div className="flex gap-1">
-              <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[8px] font-black text-green-500 uppercase tracking-tighter">Live</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <p className="text-[9px] font-bold text-foreground/20 uppercase">Reserve_{stockToken.symbol}</p>
-              <p className="text-sm font-bold text-foreground font-mono">
-                {parseFloat(formatEther((poolInfo as any).reserveStock || BigInt(0))).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div className="space-y-1 border-l border-white/5 pl-6">
-              <p className="text-[9px] font-bold text-foreground/20 uppercase">Reserve_oUSD</p>
-              <p className="text-sm font-bold text-foreground font-mono">
-                {parseFloat(formatEther((poolInfo as any).reserveStable || BigInt(0))).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

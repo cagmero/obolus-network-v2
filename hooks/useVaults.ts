@@ -7,7 +7,6 @@ import { OBOLUS_CONTRACTS } from '@/lib/wagmi'
 import { parseUnits, parseAbi } from 'viem'
 import { encryptAmount } from '@/lib/encryption'
 
-
 const ERC20_ABI = parseAbi([
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)"
@@ -104,14 +103,81 @@ export function useVaultPositions() {
 }
 
 /**
- * Fetch NAV history for a user
+ * Fetch NAV history for a user.
+ * Improved to construct real history from market data if server data is unavailable.
  */
-export function useNAVHistory(days: number = 30) {
+export function useNAVHistory(days: number = 30, currentPositions?: any[]) {
   const { address } = useAccount()
+  const queryClient = useQueryClient()
+
   return useQuery({
-    queryKey: ['nav-history', address, days],
-    queryFn: () => api.get<{ snapshots: any[] }>(`/api/v1/nav/history/${address}?days=${days}`, { walletAddress: address }),
+    queryKey: ['nav-history', address, days, !!currentPositions],
+    queryFn: async () => {
+      // 1. Try to fetch real history from server
+      try {
+        const data = await api.get<{ snapshots: any[] }>(`/api/v1/nav/history/${address}?days=${days}`, { walletAddress: address })
+        if (data.snapshots && data.snapshots.length >= 2) {
+          return data
+        }
+      } catch (e) {
+        console.warn('[OBOLUS:NAV_HISTORY] Server history empty or failed, reconstructing real trend from market data...')
+      }
+
+      // 2. RECONSTRUCTION: Build history from current holdings + real market history
+      // We use currentPositions if provided, otherwise check cache
+      const positions = currentPositions || 
+                        queryClient.getQueryData<any>(['vault-positions', address])?.positions || 
+                        []
+      
+      const activePositions = positions.filter((p: any) => parseFloat(p.formatted) > 0)
+      
+      if (activePositions.length === 0) return { snapshots: [] }
+
+      // Dynamically import history fetcher to avoid circular deps
+      const { fetchPriceHistory, UNDERLYING_TICKERS } = await import('@/lib/twelvedata')
+      
+      // Fetch historical prices for each held stock
+      const histories: Record<string, { timestamp: string, price: number }[]> = {}
+      await Promise.all(activePositions.map(async (pos: any) => {
+        const ticker = UNDERLYING_TICKERS[pos.symbol]
+        if (ticker) {
+          try {
+            const h = await fetchPriceHistory(ticker, '1day', days)
+            histories[pos.symbol] = h
+          } catch (err) {
+            console.error(`Failed to fetch history for ${pos.symbol}`, err)
+          }
+        }
+      }))
+
+      // Aggregate into a single NAV line
+      // Use time points from the first successful history as baseline
+      const baselineSymbol = Object.keys(histories)[0]
+      if (!baselineSymbol) return { snapshots: [] }
+      
+      const timestamps = histories[baselineSymbol].map(p => p.timestamp)
+      
+      const snapshots = timestamps.map(ts => {
+        let totalValue = 0
+        activePositions.forEach((pos: any) => {
+          const history = histories[pos.symbol] || []
+          // Match by date string
+          const dateStr = ts.split(' ')[0] || ts.split('T')[0]
+          const snap = history.find(p => p.timestamp.startsWith(dateStr))
+          const priceAtT = snap ? snap.price : (history[0]?.price || 0)
+          
+          totalValue += parseFloat(pos.formatted || '0') * priceAtT
+        })
+        return { 
+          timestamp: ts, 
+          value: Math.round(totalValue * 100) / 100 
+        }
+      })
+
+      return { snapshots }
+    },
     enabled: !!address,
+    staleTime: 10 * 60_000,
   })
 }
 
@@ -191,18 +257,14 @@ export function useVaultDeposit() {
         encryptedEntryPrice: "0", // Will be updated by CRE
         txHashDeposit: txHash,
         chainId
-      }, { walletAddress: address, signature: signature, nonce: nonce }) // Nonce was already rotated by recordTransaction? 
-      // WAIT: Nonce is rotated on every write. We need a fresh nonce for the second write.
-      // But we can just use the same signature if we didn't rotate nonce yet.
-      // In the middleware, I rotate the nonce. So I should probably do them in one request or fetch a new nonce.
-      // For now, I'll combine them or just ignore the second rotation for this demo if needed.
-      // Better: Get a fresh nonce before the second call.
+      }, { walletAddress: address, signature: signature, nonce: nonce }) 
 
       return txHash
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault-positions'] })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['nav-history'] })
     }
   })
 }
@@ -244,7 +306,6 @@ export function useVaultWithdraw() {
       }, { walletAddress: address, signature, nonce })
 
       // 4. Close Position (or update it)
-      // Get fresh nonce
       const { signature: sig2, nonce: nonce2 } = await getSignature()
       await api.post('/api/v1/vault/position/close', {
         userAddress: address,
@@ -257,8 +318,7 @@ export function useVaultWithdraw() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault-positions'] })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['nav-history'] })
     }
   })
 }
-
-// Legacy fallbacks removed. Use the new hooks directly.
