@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { 
   PieChart, 
   ArrowUpRight, 
@@ -30,13 +30,12 @@ import Link from 'next/link'
 import { useAccount } from 'wagmi'
 import { useObolusAuth, useNAVHistory } from '@/hooks/useVaults'
 import { usePrivacyReveal } from '@/hooks/usePrivacyReveal'
-import NAVChart from '@/components/NAVChart'
 import Sparkline from '@/components/Sparkline'
 
 export default function PortfolioPage() {
   const { address } = useAccount()
   const { positions } = useAllVaultPositions()
-  const { data: navData, isLoading: navLoading } = useNAVHistory(30, Object.entries(positions || {}).map(([symbol, p]) => ({ symbol, ...p })))
+  const { data: navData, isLoading: navLoading } = { data: null, isLoading: false } // placeholder for now
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const [showValues, setShowValues] = useState<boolean>(false)
@@ -83,12 +82,6 @@ export default function PortfolioPage() {
       setIsRevealing(false)
     }
   }
-
-  // Map NAV history snapshots to chart format
-  const chartData = (navData?.snapshots || []).map(s => ({
-    timestamp: new Date(s.timestamp).toLocaleDateString(),
-    nav: s.value
-  }))
 
   // Calculate total portfolio value
   const activePositions = Object.entries(positions || {})
@@ -207,18 +200,7 @@ export default function PortfolioPage() {
           />
         </div>
 
-        {/* Performance Chart Section */}
-        <div className="space-y-6">
-          <h2 className="text-xs font-black text-foreground/40 uppercase tracking-[0.3em] px-4">PERFORMANCE_ANALYTICS // NAV_HISTORY</h2>
-          <NAVChart 
-            data={chartData} 
-            userAddress={address || '0x000...000'} 
-            isLoading={navLoading} 
-            blurred={!showValues}
-          />
-        </div>
-
-        {/* Holdings Section */}
+        {/* holdings Section */}
         <div className="space-y-6">
           <div className="flex items-center justify-between px-4">
             <h2 className="text-xs font-black text-foreground/40 uppercase tracking-[0.3em]">YOUR_ON_CHAIN_HOLDINGS // {activePositions.length}</h2>
@@ -322,12 +304,16 @@ export default function PortfolioPage() {
           )}
         </div>
 
-        {/* Lending & Yield — Venus Protocol Simulation */}
-        <LendingSection 
+        {/* Rebalancer Section */}
+        <RebalancerSection 
           activePositions={activePositions} 
-          totalValue={totalValue} 
           showValues={showValues} 
+          totalValue={totalValue}
+          addLog={addLog}
         />
+
+        {/* Yield Strategies Section */}
+        <YieldStrategiesSection />
 
         {/* Security Banner */}
         <div className="bg-black/40 border border-border/20 rounded-[40px] p-8 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
@@ -435,345 +421,231 @@ function StatCard({ label, value, subValue, color = "text-foreground", blurred =
   )
 }
 
-// ─── Lending & Yield Section ────────────────────────────────────────────────
-
-const VENUS_SUPPLY_APY = 4.82
-const VENUS_BORROW_APY = 6.15
-const LTV_RATIO = 0.65 // 65% max loan-to-value
-const LIQUIDATION_THRESHOLD = 0.80
-
-interface LendingPosition {
-  symbol: string
-  collateralValue: number
-  borrowed: number
-  supplyYield: number
-  timestamp: number
-}
-
-function LendingSection({ 
-  activePositions, 
-  totalValue, 
-  showValues 
-}: { 
-  activePositions: { symbol: string; value: number; vault: any; pos: any; price: number }[]
-  totalValue: number
-  showValues: boolean 
+function RebalancerSection({ activePositions, showValues, totalValue, addLog }: { 
+  activePositions: any[], 
+  showValues: boolean, 
+  totalValue: number,
+  addLog: any
 }) {
-  const [borrowAmount, setBorrowAmount] = useState('')
-  const [selectedAsset, setSelectedAsset] = useState('')
-  const [lendingPositions, setLendingPositions] = useState<LendingPosition[]>([])
-  const [borrowStep, setBorrowStep] = useState<'idle' | 'collateralizing' | 'borrowing' | 'supplying' | 'complete' | 'error'>('idle')
+  const [targetWeights, setTargetWeights] = useState<Record<string, number>>({})
+  const [isRebalancing, setIsRebalancing] = useState(false)
+  const [rebalanceStep, setRebalanceStep] = useState(0)
 
-  const totalCollateral = lendingPositions.reduce((s, p) => s + p.collateralValue, 0)
-  const totalBorrowed = lendingPositions.reduce((s, p) => s + p.borrowed, 0)
-  const totalSupplyYield = lendingPositions.reduce((s, p) => s + p.supplyYield, 0)
-  const healthFactor = totalCollateral > 0 ? (totalCollateral * LIQUIDATION_THRESHOLD) / totalBorrowed : Infinity
-  const maxBorrow = (() => {
-    const asset = activePositions.find(a => a.symbol === selectedAsset)
-    if (!asset) return 0
-    const alreadyUsed = lendingPositions.filter(p => p.symbol === selectedAsset).reduce((s, p) => s + p.collateralValue, 0)
-    return Math.max(0, (asset.value - alreadyUsed) * LTV_RATIO)
-  })()
-
-  const handleBorrow = useCallback(async () => {
-    const amt = parseFloat(borrowAmount)
-    if (!amt || amt <= 0 || amt > maxBorrow || !selectedAsset) return
-
-    try {
-      setBorrowStep('collateralizing')
-      await new Promise(r => setTimeout(r, 800))
-
-      setBorrowStep('borrowing')
-      await new Promise(r => setTimeout(r, 1000))
-
-      setBorrowStep('supplying')
-      await new Promise(r => setTimeout(r, 800))
-
-      const collateralNeeded = amt / LTV_RATIO
-      const annualYield = amt * (VENUS_SUPPLY_APY / 100)
-
-      setLendingPositions(prev => [...prev, {
-        symbol: selectedAsset,
-        collateralValue: collateralNeeded,
-        borrowed: amt,
-        supplyYield: annualYield,
-        timestamp: Date.now(),
-      }])
-
-      setBorrowStep('complete')
-      setBorrowAmount('')
-      setTimeout(() => setBorrowStep('idle'), 2000)
-    } catch {
-      setBorrowStep('error')
-      setTimeout(() => setBorrowStep('idle'), 2000)
+  // Initialize weights if not set
+  useEffect(() => {
+    if (activePositions.length > 0 && Object.keys(targetWeights).length === 0) {
+      const equalWeight = 100 / activePositions.length
+      const initial: Record<string, number> = {}
+      activePositions.forEach(p => {
+        initial[p.symbol] = equalWeight
+      })
+      setTargetWeights(initial)
     }
-  }, [borrowAmount, maxBorrow, selectedAsset])
+  }, [activePositions, targetWeights])
+
+  const handleUpdateWeight = (symbol: string, val: string) => {
+    const num = parseFloat(val) || 0
+    setTargetWeights(prev => ({ ...prev, [symbol]: num }))
+  }
+
+  const rebalancePlan = useMemo(() => {
+    if (totalValue === 0) return []
+    return activePositions.map(p => {
+      const currentWeight = (p.value / totalValue) * 100
+      const targetWeight = targetWeights[p.symbol] || 0
+      const diffWeight = targetWeight - currentWeight
+      const diffValue = (diffWeight / 100) * totalValue
+      return {
+        ...p,
+        currentWeight,
+        targetWeight,
+        diffWeight,
+        diffValue,
+        action: diffValue > 5 ? 'BUY' : diffValue < -5 ? 'SELL' : 'HOLD'
+      }
+    }).filter(p => p.action !== 'HOLD')
+  }, [activePositions, totalValue, targetWeights])
+
+  const executeRebalance = async () => {
+    setIsRebalancing(true)
+    setRebalanceStep(1)
+    addLog("REBALANCER_ENGINE_STARTED", "info", "ACTIVE")
+    
+    // Step-by-step simulation for the demo
+    for (const step of rebalancePlan) {
+      if (step.action === 'SELL') {
+        addLog(`WITHDRAWING_${step.symbol}_FROM_VAULT`, "info", "PENDING")
+        await new Promise(r => setTimeout(r, 1500))
+        addLog(`SWAPPING_${step.symbol}_FOR_oUSD // AMM_HYBRID`, "info", "SWAPPING")
+        await new Promise(r => setTimeout(r, 1500))
+      } else {
+        addLog(`SWAPPING_oUSD_FOR_${step.symbol} // ORACLE_GUIDED`, "info", "SWAPPING")
+        await new Promise(r => setTimeout(r, 1500))
+        addLog(`DEPOSITING_${step.symbol}_INTO_VAULT`, "info", "STAKING")
+        await new Promise(r => setTimeout(r, 1500))
+      }
+    }
+
+    addLog("REBALANCING_SEQUENCE_COMPLETE // PORTFOLIO_OPTIMIZED", "success", "SYNCED")
+    setIsRebalancing(false)
+    setRebalanceStep(0)
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between px-4">
-        <h2 className="text-xs font-black text-foreground/40 uppercase tracking-[0.3em] flex items-center gap-2">
-          <Landmark className="w-4 h-4 text-primary" />
-          LENDING_POOL // VENUS_PROTOCOL_SIMULATION
-        </h2>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[8px] font-black text-primary uppercase tracking-widest">BSC_MAINNET_FORK</span>
+    <div className="bg-white/5 border border-border/20 rounded-[40px] p-10 backdrop-blur-sm space-y-8 group hover:border-primary/20 transition-all">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="text-xs font-black text-primary uppercase tracking-[0.3em]">PROPORTIONAL_REBALANCER // SMART_VAULT_ENGINE</h2>
+          <p className="text-sm font-bold text-foreground/40 uppercase">Optimizing asset distribution across the 3-layer privacy stack</p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+          <RefreshCw className={cn("w-3 h-3 text-primary", isRebalancing && "animate-spin")} />
+          <span className="text-[8px] font-black text-primary uppercase tracking-widest">Auto_Sync_Active</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Lending Stats */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white/5 border border-border/20 rounded-[32px] p-6 space-y-5">
-            <div className="text-[9px] font-black text-foreground/30 uppercase tracking-widest">LENDING_OVERVIEW</div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-foreground/40 uppercase">Collateral Locked</span>
-                <span className={cn("text-sm font-black tabular-nums", !showValues && "blur-sm")}>
-                  ${showValues ? totalCollateral.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'X,XXX.XX'}
-                </span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="space-y-6">
+          <div className="space-y-4">
+            {activePositions.map((p) => (
+              <div key={p.symbol} className="space-y-2">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                  <span className="text-foreground/60">{p.symbol} WEIGHT</span>
+                  <span className="text-primary">{targetWeights[p.symbol]?.toFixed(1) || 0}%</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={targetWeights[p.symbol] || 0}
+                    onChange={(e) => handleUpdateWeight(p.symbol, e.target.value)}
+                    className="flex-1 accent-primary bg-white/5 h-1.5 rounded-full appearance-none flex-grow"
+                  />
+                  <Input 
+                    type="number" 
+                    value={targetWeights[p.symbol]?.toFixed(0) || 0}
+                    onChange={(e) => handleUpdateWeight(p.symbol, e.target.value)}
+                    className="w-16 h-8 bg-black/40 border-border/10 text-[10px] font-black text-center"
+                  />
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-foreground/40 uppercase">USDC Borrowed</span>
-                <span className={cn("text-sm font-black text-blue-400 tabular-nums", !showValues && "blur-sm")}>
-                  ${showValues ? totalBorrowed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'X,XXX.XX'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-foreground/40 uppercase">Venus Supply Yield</span>
-                <span className={cn("text-sm font-black text-green-500 tabular-nums", !showValues && "blur-sm")}>
-                  +${showValues ? totalSupplyYield.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'XXX.XX'}/yr
-                </span>
-              </div>
-              <div className="h-px bg-border/10" />
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-foreground/40 uppercase">Health Factor</span>
-                <span className={cn(
-                  "text-sm font-black tabular-nums",
-                  healthFactor > 2 ? "text-green-500" : healthFactor > 1.2 ? "text-yellow-500" : "text-red-500"
-                )}>
-                  {totalBorrowed > 0 ? healthFactor.toFixed(2) : '∞'}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-foreground/30">
-                <span>LTV Utilization</span>
-                <span>{totalCollateral > 0 ? ((totalBorrowed / totalCollateral) * 100).toFixed(1) : '0'}%</span>
-              </div>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
-                <div 
-                  className={cn(
-                    "h-full rounded-full transition-all duration-500",
-                    (totalBorrowed / totalCollateral) > 0.75 ? "bg-red-500" : 
-                    (totalBorrowed / totalCollateral) > 0.5 ? "bg-yellow-500" : "bg-primary"
-                  )}
-                  style={{ width: `${totalCollateral > 0 ? Math.min((totalBorrowed / totalCollateral) * 100, 100) : 0}%` }}
-                />
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Protocol Rates */}
-          <div className="bg-white/5 border border-border/20 rounded-[32px] p-6 space-y-4">
-            <div className="text-[9px] font-black text-foreground/30 uppercase tracking-widest">VENUS_RATES</div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-black/40 rounded-2xl p-4 text-center space-y-1">
-                <Percent className="w-4 h-4 text-green-500 mx-auto" />
-                <div className="text-lg font-black text-green-500">{VENUS_SUPPLY_APY}%</div>
-                <div className="text-[8px] font-bold text-foreground/30 uppercase">Supply APY</div>
-              </div>
-              <div className="bg-black/40 rounded-2xl p-4 text-center space-y-1">
-                <Percent className="w-4 h-4 text-blue-400 mx-auto" />
-                <div className="text-lg font-black text-blue-400">{VENUS_BORROW_APY}%</div>
-                <div className="text-[8px] font-bold text-foreground/30 uppercase">Borrow APR</div>
-              </div>
-            </div>
-            <div className="text-[8px] text-foreground/20 font-medium text-center uppercase tracking-wider">
-              Max LTV: {(LTV_RATIO * 100)}% // Liquidation: {(LIQUIDATION_THRESHOLD * 100)}%
-            </div>
-          </div>
+          <Button 
+            onClick={executeRebalance}
+            disabled={isRebalancing || rebalancePlan.length === 0}
+            className="w-full h-14 bg-primary hover:bg-primary/90 text-black font-black text-xs rounded-2xl uppercase tracking-[0.2em] shadow-xl shadow-primary/10"
+          >
+            {isRebalancing ? "EXECUTING_OPTIMIZATION..." : "EXECUTE_REBALANCE_SEQUENCE"}
+          </Button>
         </div>
 
-        {/* Borrow Interface */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="bg-white/5 border border-border/20 rounded-[32px] p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[9px] font-black text-foreground/30 uppercase tracking-widest">BORROW_USDC // SUPPLY_TO_VENUS</div>
-              <div className="flex items-center gap-1">
-                <DollarSign className="w-3 h-3 text-blue-400" />
-                <span className="text-[9px] font-black text-blue-400 uppercase">USDC</span>
-              </div>
-            </div>
-
-            {/* Asset Selector */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Collateral Asset</span>
-              <div className="flex flex-wrap gap-2">
-                {activePositions.map(({ symbol, vault, value }) => (
-                  <button
-                    key={symbol}
-                    onClick={() => { setSelectedAsset(symbol); setBorrowAmount('') }}
-                    className={cn(
-                      "px-4 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all",
-                      selectedAsset === symbol 
-                        ? "border-primary bg-primary/10 text-primary" 
-                        : "border-border/20 bg-black/20 text-foreground/40 hover:border-foreground/20"
-                    )}
-                  >
-                    <span style={{ color: vault?.color }}>{symbol}</span>
-                    <span className={cn("ml-2 text-foreground/20", !showValues && "blur-sm")}>
-                      ${showValues ? value.toFixed(0) : 'XXX'}
-                    </span>
-                  </button>
-                ))}
-                {activePositions.length === 0 && (
-                  <div className="text-[10px] text-foreground/20 font-bold uppercase py-2">
-                    No vault positions to collateralize — deposit first
+        <div className="bg-black/40 rounded-[32px] p-8 border border-border/10 space-y-6">
+          <div className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">EXPECTED_ADJUSTMENTS</div>
+          <div className="space-y-4">
+            {rebalancePlan.length > 0 ? rebalancePlan.map((p) => (
+              <div key={p.symbol} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-border/5">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black",
+                    p.action === 'BUY' ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
+                  )}>
+                    {p.action === 'BUY' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Borrow Amount */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-end">
-                <span className="text-[10px] font-black text-foreground/40 uppercase">Borrow Amount (USDC)</span>
-                <span className={cn("text-[10px] font-bold text-foreground/20 uppercase", !showValues && "blur-sm")}>
-                  Max: ${showValues ? maxBorrow.toFixed(2) : 'X,XXX.XX'}
-                </span>
-              </div>
-              <div className="relative">
-                <Input 
-                  type="number"
-                  placeholder="0.00"
-                  value={borrowAmount}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBorrowAmount(e.target.value)}
-                  disabled={!selectedAsset || borrowStep !== 'idle'}
-                  className="h-16 bg-black/60 border-border/10 rounded-2xl text-2xl font-black px-6 focus:ring-primary/20 focus:border-primary/40 tabular-nums"
-                />
-                <button 
-                  onClick={() => setBorrowAmount(maxBorrow.toFixed(2))}
-                  disabled={!selectedAsset}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[9px] font-black text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-30"
-                >
-                  MAX
-                </button>
-              </div>
-            </div>
-
-            {/* Flow Preview */}
-            {selectedAsset && borrowAmount && parseFloat(borrowAmount) > 0 && (
-              <div className="bg-black/40 rounded-2xl p-4 flex items-center justify-between text-[9px] font-bold uppercase tracking-wider">
-                <div className="flex items-center gap-2 text-foreground/40">
-                  <Lock className="w-3 h-3" />
-                  Lock {selectedAsset}
+                  <div>
+                    <div className="text-[10px] font-black text-foreground uppercase">{p.symbol}</div>
+                    <div className="text-[8px] font-bold text-foreground/20 uppercase">{p.action === 'BUY' ? 'Increase Exposure' : 'Taking Profit'}</div>
+                  </div>
                 </div>
-                <ArrowRight className="w-3 h-3 text-foreground/20" />
-                <div className="flex items-center gap-2 text-blue-400">
-                  <DollarSign className="w-3 h-3" />
-                  Borrow USDC
+                <div className="text-right">
+                  <div className={cn("text-xs font-black tabular-nums", p.action === 'BUY' ? "text-green-500" : "text-red-500")}>
+                    {p.action === 'BUY' ? '+' : '-'}${Math.abs(p.diffValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </div>
+                  <div className="text-[8px] font-bold text-foreground/20 uppercase tracking-tighter">
+                    {p.currentWeight.toFixed(1)}% → {p.targetWeight.toFixed(1)}%
+                  </div>
                 </div>
-                <ArrowRight className="w-3 h-3 text-foreground/20" />
-                <div className="flex items-center gap-2 text-green-500">
-                  <TrendingUp className="w-3 h-3" />
-                  Supply Venus ({VENUS_SUPPLY_APY}% APY)
-                </div>
+              </div>
+            )) : (
+              <div className="h-40 flex flex-col items-center justify-center text-center opacity-20 italic">
+                <CheckCircle2 className="w-8 h-8 mb-2" />
+                <p className="text-[10px] uppercase tracking-widest">Portfolio currently in target sync</p>
               </div>
             )}
-
-            {/* Borrow Steps */}
-            {borrowStep !== 'idle' && (
-              <div className="bg-black/40 rounded-2xl p-4 space-y-2">
-                <BorrowStepRow label="Collateralizing vault position" done={['borrowing','supplying','complete'].includes(borrowStep)} active={borrowStep === 'collateralizing'} />
-                <BorrowStepRow label="Borrowing USDC against collateral" done={['supplying','complete'].includes(borrowStep)} active={borrowStep === 'borrowing'} />
-                <BorrowStepRow label="Supplying USDC to Venus lending pool" done={borrowStep === 'complete'} active={borrowStep === 'supplying'} />
-              </div>
-            )}
-
-            <Button
-              onClick={handleBorrow}
-              disabled={!selectedAsset || !borrowAmount || parseFloat(borrowAmount) <= 0 || parseFloat(borrowAmount) > maxBorrow || borrowStep !== 'idle'}
-              className="w-full h-14 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-[0.2em]"
-            >
-              {borrowStep === 'complete' ? 'POSITION_OPENED' : borrowStep !== 'idle' ? 'PROCESSING...' : 'BORROW & SUPPLY TO VENUS'}
-            </Button>
           </div>
-
-          {/* Active Lending Positions */}
-          {lendingPositions.length > 0 && (
-            <div className="bg-white/5 border border-border/20 rounded-[32px] overflow-hidden">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-border/10 bg-black/40">
-                    <th className="px-6 py-4 text-[9px] font-black text-foreground/30 uppercase tracking-widest">Collateral</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-foreground/30 uppercase tracking-widest">Locked Value</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-foreground/30 uppercase tracking-widest">USDC Borrowed</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-foreground/30 uppercase tracking-widest">Venus Yield</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-foreground/30 uppercase tracking-widest">Net APY</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/10">
-                  {lendingPositions.map((pos, i) => {
-                    const netApy = VENUS_SUPPLY_APY - (VENUS_BORROW_APY * (pos.borrowed / pos.collateralValue))
-                    return (
-                      <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="px-6 py-5">
-                          <span className="text-xs font-black text-foreground uppercase">{pos.symbol}</span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={cn("text-xs font-mono font-bold tabular-nums", !showValues && "blur-sm")}>
-                            ${showValues ? pos.collateralValue.toLocaleString(undefined, { minimumFractionDigits: 2 }) : 'X,XXX.XX'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={cn("text-xs font-mono font-bold text-blue-400 tabular-nums", !showValues && "blur-sm")}>
-                            ${showValues ? pos.borrowed.toLocaleString(undefined, { minimumFractionDigits: 2 }) : 'X,XXX.XX'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={cn("text-xs font-mono font-bold text-green-500 tabular-nums", !showValues && "blur-sm")}>
-                            +${showValues ? pos.supplyYield.toLocaleString(undefined, { minimumFractionDigits: 2 }) : 'XXX.XX'}/yr
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={cn(
-                            "text-xs font-black tabular-nums",
-                            netApy >= 0 ? "text-green-500" : "text-red-500"
-                          )}>
-                            {netApy >= 0 ? '+' : ''}{netApy.toFixed(2)}%
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       </div>
     </div>
   )
 }
 
-function BorrowStepRow({ label, done, active }: { label: string; done: boolean; active: boolean }) {
+function YieldStrategiesSection() {
+  const strategies = [
+    {
+      title: "Stock_Token_Lending",
+      platform: "Venus_Protocol",
+      target: "4.8% - 7.2% APY",
+      status: "ACTIVE",
+      icon: <Landmark className="w-5 h-5 text-blue-400" />,
+      link: "/lending",
+      desc: "Borrow USDC against stock collateral and re-supply for looped yield."
+    },
+    {
+      title: "Shielded_Vault_Staking",
+      platform: "Obolus_Core",
+      target: "12% - 18% APY",
+      status: "BOOSTED",
+      icon: <ShieldCheck className="w-5 h-5 text-primary" />,
+      link: "/vaults",
+      desc: "Private deposit layers with tiered APY incentives for long-term holders."
+    },
+    {
+      title: "AMM_Market_Making",
+      platform: "Obolus_AMM",
+      target: "Variable Fees",
+      status: "LIVE",
+      icon: <RefreshCw className="w-5 h-5 text-green-400" />,
+      link: "/swap",
+      desc: "Provide liquidity for stock/oUSD pairs to capture trading volume fees."
+    }
+  ]
+
   return (
-    <div className="flex items-center justify-between">
-      <span className={cn(
-        "text-[10px] font-bold uppercase tracking-tight",
-        done ? "text-foreground" : active ? "text-blue-400" : "text-foreground/20"
-      )}>{label}</span>
-      {done ? (
-        <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-      ) : active ? (
-        <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-      ) : (
-        <div className="w-3.5 h-3.5 rounded-full border-2 border-foreground/10" />
-      )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between px-4">
+        <h2 className="text-xs font-black text-foreground/40 uppercase tracking-[0.3em]">YIELD_ENHANCEMENT_STRATEGIES // ACTIVE_MODULES</h2>
+        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_green]" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {strategies.map((s, i) => (
+          <Link href={s.link} key={i}>
+            <div className="bg-white/5 border border-border/20 rounded-[32px] p-8 space-y-6 group hover:border-primary/40 hover:bg-white/[0.08] transition-all cursor-pointer h-full flex flex-col justify-between shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  {s.icon}
+                </div>
+                <div className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[8px] font-black text-foreground/40 uppercase tracking-widest leading-none">
+                  {s.status}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-sm font-black text-foreground uppercase tracking-tight group-hover:text-primary transition-colors">{s.title}</h3>
+                <p className="text-[10px] text-foreground/40 font-bold uppercase tracking-widest">{s.platform}</p>
+                <p className="text-[10px] text-foreground/30 leading-relaxed min-h-[40px]">{s.desc}</p>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                <div className="text-lg font-black text-foreground tracking-tighter tabular-nums">{s.target}</div>
+                <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }
