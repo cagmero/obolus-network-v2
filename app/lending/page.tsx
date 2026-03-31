@@ -12,7 +12,14 @@ import { Button } from "@/components/ui/button"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ExternalLink, CheckCircle2, X } from "lucide-react"
 
 const stockTokens = SWAP_TOKENS.filter(t => !t.isStable)
 
@@ -20,6 +27,8 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
   const { address, isConnected } = useAccount()
   const [tab, setTab] = useState<'lend' | 'borrow'>('lend')
   const [amount, setAmount] = useState("")
+  const [modalOpen, setModalOpen] = useState(false)
+  const [opType, setOpType] = useState<'Lending' | 'Withdrawing' | 'Borrowing' | 'Repaying' | 'Approval'>('Lending')
   const poolAddress = DEFI_ADDRESSES.LendingPools[token.symbol] as `0x${string}` | undefined
   const queryClient = useQueryClient()
 
@@ -107,7 +116,9 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
     const parsedAmount = parseEther(amount)
     const allowance = (stockAllowance as bigint) || BigInt(0)
     
+    setModalOpen(true)
     if (allowance < parsedAmount) {
+      setOpType('Approval')
       writeContract({
         address: token.address,
         abi: ERC20ABI,
@@ -117,6 +128,7 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
       return
     }
 
+    setOpType('Lending')
     writeContract({
       address: poolAddress,
       abi: ObolusLendingPoolABI,
@@ -127,6 +139,8 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
 
   const handleWithdraw = () => {
     if (!poolAddress || !amount) return
+    setModalOpen(true)
+    setOpType('Withdrawing')
     writeContract({
       address: poolAddress,
       abi: ObolusLendingPoolABI,
@@ -142,7 +156,9 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
     const collateral = (parsedAmount * BigInt(150)) / BigInt(100) // 1.5x collateral
     const allowance = (oUSDAllowance as bigint) || BigInt(0)
     
+    setModalOpen(true)
     if (allowance < collateral) {
+      setOpType('Approval')
       writeContract({
         address: DEFI_ADDRESSES.oUSD,
         abi: ERC20ABI,
@@ -152,6 +168,7 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
       return
     }
 
+    setOpType('Borrowing')
     writeContract({
       address: poolAddress,
       abi: ObolusLendingPoolABI,
@@ -162,6 +179,8 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
 
   const handleRepay = () => {
     if (!poolAddress || !amount) return
+    setModalOpen(true)
+    setOpType('Repaying')
     writeContract({
       address: poolAddress,
       abi: ObolusLendingPoolABI,
@@ -316,6 +335,94 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
           </div>
         )}
       </div>
+
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md bg-black/90 border-border/20 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase tracking-tighter flex items-center justify-between">
+              <span>{opType} Progress</span>
+              {isSuccess && <CheckCircle2 className="w-5 h-5 text-primary" />}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-6 space-y-6">
+            <div className="flex flex-col items-center justify-center space-y-4 py-4">
+              {!isSuccess && !isError && (
+                <>
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Vault className="w-5 h-5 text-primary animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-foreground">
+                      {isPending ? "Confirm in Wallet..." : "Processing Transaction..."}
+                    </p>
+                    <p className="text-[10px] text-foreground/40 uppercase tracking-widest mt-1">
+                      {opType === 'Approval' ? "Unlocking " + token.symbol : "Executing " + opType}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {isSuccess && (
+                <>
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-10 h-10 text-primary" />
+                  </div>
+                  <div className="text-center">
+                    <h4 className="text-lg font-black text-foreground uppercase italic tracking-tight">Protocol Sync Complete</h4>
+                    <p className="text-[10px] text-foreground/40 uppercase tracking-widest mt-1">
+                      Assets successfully {opType === 'Lending' ? 'Lent' : opType === 'Approval' ? 'Authorized' : 'Processed'}
+                    </p>
+                  </div>
+                  
+                  <div className="w-full bg-white/5 border border-border/10 rounded-2xl p-4 space-y-3">
+                    <div className="flex justify-between items-center text-[10px] text-foreground/40 font-bold uppercase">
+                      <span>Transaction ID</span>
+                      <span className="font-mono text-foreground/60">{txHash?.slice(0,10)}...{txHash?.slice(-8)}</span>
+                    </div>
+                    <a 
+                      href={`https://testnet.bscscan.com/tx/${txHash}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-black font-black text-[10px] uppercase tracking-widest rounded-xl hover:opacity-90 transition-opacity"
+                    >
+                      View on Explorer <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  
+                  <Button 
+                    onClick={() => {
+                      setModalOpen(false)
+                      // Small delay before reset to let success state show
+                      setTimeout(() => reset(), 100);
+                    }} 
+                    variant="outline" 
+                    className="w-full border-border/20 uppercase text-[10px] font-black h-12 rounded-xl"
+                  >
+                    Close Window
+                  </Button>
+                </>
+              )}
+
+              {isError && (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+                    <X className="w-8 h-8 text-red-400" />
+                  </div>
+                  <p className="text-sm font-bold text-red-400">Transaction Failed</p>
+                  <p className="text-[10px] text-foreground/60 text-center px-4">{txError?.message.slice(0, 100)}...</p>
+                  <Button onClick={() => setModalOpen(false)} className="w-full bg-white/5 hover:bg-white/10 uppercase text-[10px] font-black">Retry</Button>
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
