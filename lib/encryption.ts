@@ -4,8 +4,6 @@
  * Only the Chainlink CRE (TEE) can decrypt these values.
  */
 
-const SERVER_BASE = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
-
 let cachedPubKey: string | null = null;
 
 /**
@@ -15,7 +13,7 @@ let cachedPubKey: string | null = null;
 export async function getCrePublicKey(): Promise<string> {
   if (cachedPubKey) return cachedPubKey;
 
-  const res = await fetch(`${SERVER_BASE}/api/v1/cre-public-key`);
+  const res = await fetch(`/api/v1/cre-public-key`);
   if (!res.ok) throw new Error(`Failed to fetch CRE public key: ${res.status}`);
   const { publicKey } = await res.json();
   cachedPubKey = publicKey;

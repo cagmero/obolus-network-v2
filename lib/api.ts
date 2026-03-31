@@ -6,6 +6,26 @@
 const SERVER_BASE = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
 const SERVER_URL = `${SERVER_BASE.replace(/\/$/, '')}/api/v1`;
 
+/**
+ * Routes that are served by the Next.js app (same origin) rather than
+ * the external backend on port 3001. These use relative URLs so they
+ * hit the Next.js API routes directly.
+ */
+const LOCAL_ROUTE_PREFIXES = [
+  '/vault/shield',
+  '/vault/unshield',
+  '/vault/reveal',
+  '/vault/transfer-status',
+  '/cre-public-key',
+  '/cre/',
+  '/internal/',
+];
+
+function isLocalRoute(endpoint: string): boolean {
+  const clean = endpoint.startsWith('/api/v1') ? endpoint.substring(7) : endpoint;
+  return LOCAL_ROUTE_PREFIXES.some(prefix => clean.startsWith(prefix));
+}
+
 export interface ApiRequestOptions extends RequestInit {
   walletAddress?: string;
   signature?: string;
@@ -26,10 +46,17 @@ export const api = {
     const cleanEndpoint = endpoint.startsWith('/api/v1') 
       ? endpoint.substring(7) 
       : endpoint;
-      
-    const url = endpoint.startsWith('http') 
-      ? endpoint 
-      : `${SERVER_URL}${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
+
+    let url: string;
+    if (endpoint.startsWith('http')) {
+      url = endpoint;
+    } else if (isLocalRoute(endpoint)) {
+      // Next.js API route — use relative URL (same origin, port 3000)
+      url = `/api/v1${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
+    } else {
+      // External backend (port 3001)
+      url = `${SERVER_URL}${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
+    }
     
     console.log(`[OBOLUS:API] → ${fetchOptions.method || 'GET'} ${endpoint}`);
 
