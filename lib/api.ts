@@ -51,12 +51,12 @@ export const api = {
     if (endpoint.startsWith('http')) {
       url = endpoint;
     } else if (isLocalRoute(endpoint)) {
-      // Stay on same origin for local Next.js API routes
+      // Stay on same origin for local Next.js API routes (shield, unshield, reveal, status)
       url = `/api/v1${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
     } else {
-      // Use absolute URL for backend routes to ensure they hit the rewrite correctly
-      // (Next.js rewrites can also be configured to handle absolute URLs if needed)
-      url = `/api/v1${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
+      // Use absolute URL for backend routes (prices, transactions, positions)
+      // This hit the backend server directly, allowed because its CORS origin is '*'
+      url = `${SERVER_URL}${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
     }
     
     console.log(`[OBOLUS:API] → ${fetchOptions.method || 'GET'} ${endpoint}`);
