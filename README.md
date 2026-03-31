@@ -1,87 +1,54 @@
-# Obolus Network V2 (Protocol) 🌌
+# Obolus Network V2 (Protocol Dashboard) 🌌
 
 The core application of the **Obolus Network** ecosystem. This frontend allows users to privately manage a portfolio of tokenized equities on **BNB Chain** using a three-layer privacy architecture powered by **Chainlink CRE**.
 
 ## 🏗️ Three-Layer Trust Architecture
 
-Obolus V2 separates concerns across three independent trust domains (inspired by Ghost Finance):
+Obolus V2 separates concerns across three independent trust domains to ensure institutional-grade privacy:
 
 | Layer | Role | Trust Property |
 |-------|------|----------------|
-| **Custody** | RWAVault on BSC Testnet + Pool Wallet | Funds move only via user action or valid CRE-signed transfer |
-| **Blind Storage** | Obolus API (Next.js + in-memory state) | Stores encrypted positions; cannot decrypt amounts or move funds |
-| **Settlement Engine** | Chainlink CRE (TEE) | Decrypts positions, settles NAV, executes transfers; plaintext wiped after each cycle |
+| **Custody** | `RWAVault` on BSC Testnet + Pool Wallet | Funds move only via user action or valid CRE-signed transfer |
+| **Blind Storage** | **Obolus API** (Next.js + MongoDB) | Stores encrypted positions; cannot decrypt amounts or move funds |
+| **Settlement Engine** | **Chainlink CRE** (TEE) | Decrypts positions, settles NAV, executes transfers; plaintext wiped after each cycle |
 
 ### 1. **Pool Wallet Pattern**
-After depositing on-chain, users "shield" their tokens by transferring to a shared pool wallet. All subsequent fund movements happen from the pool address, making individual positions untraceable on-chain.
+After depositing on-chain, users "shield" their tokens by transferring them to a shared **Pool Wallet**. All subsequent fund movements happen from this shared address, making individual positions untraceable on-chain.
 
 ### 2. **ECIES Encryption + CRE**
-Position amounts are encrypted client-side using ECIES (secp256k1) with the CRE public key. The server stores encrypted blobs but cannot read them. Only the CRE (running inside a TEE) can decrypt positions for NAV settlement.
+Position amounts are encrypted client-side using **ECIES (secp256k1)** using the CRE's public key. The server stores these encrypted blobs but lacks the private key to read them. Only the **Chainlink CRE** (running inside a TEE) can decrypt these positions for settlement.
 
 ### 3. **EIP-712 Authentication**
-All user-facing server actions require a signed EIP-712 typed data message, proving wallet ownership without exposing private keys.
-
-### 4. **Privacy Reveal Mechanism**
-Users can locally decrypt their own positions by signing a "Privacy Reveal" request. The signature derives an AES key that decrypts user-specific data client-side.
-
-### 5. **Wagmi & RainbowKit Integration**
-Native Web3 connectivity on **BSC Testnet** with a customized **Neon Confidential** theme.
+All user-facing server actions require a signed **EIP-712 typed data message**, proving wallet ownership without ever exposing private keys to the backend.
 
 ---
 
-## 🔒 Privacy Model
+## 📡 Live Smart Contracts (BSC Testnet)
 
-| Data | Server | CRE (TEE) | On-Chain |
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| **RWAVault** | `0x772C9513fFcffaed224048b3e22AcF9E58854b73` | [BscScan](https://testnet.bscscan.com/address/0x772C9513fFcffaed224048b3e22AcF9E58854b73) |
+| **ObolusOracle** | `0xb0ab8015Ce10593eE9a26E78B0BeDBc21330ba23` | [BscScan](https://testnet.bscscan.com/address/0xb0ab8015Ce10593eE9a26E78B0BeDBc21330ba23) |
+| **oUSD (Stable)** | `0x73b44a1C5e2c981594BA5dbb9d84edc905202f82` | [BscScan](https://testnet.bscscan.com/address/0x73b44a1C5e2c981594BA5dbb9d84edc905202f82) |
+| **ObolusAMM** | `0x01E604F1D21Fc690A6fD9c2f7a27A5dA572cD8e4` | [BscScan](https://testnet.bscscan.com/address/0x01E604F1D21Fc690A6fD9c2f7a27A5dA572cD8e4) |
+| **TSLAx Pool** | `0x0e38d8069C194d6b12C6B6002f9286C91a0BcE91` | [BscScan](https://testnet.bscscan.com/address/0x0e38d8069C194d6b12C6B6002f9286C91a0BcE91) |
+| **AAPLx Pool** | `0x35d702B460150c09ae181A2129eab70428Dc8889` | [BscScan](https://testnet.bscscan.com/address/0x35d702B460150c09ae181A2129eab70428Dc8889) |
+| **NVDAon Pool** | `0x3cfc330FB24A318fc619Ee8aE80DD3c9f92Dc65e` | [BscScan](https://testnet.bscscan.com/address/0x3cfc330FB24A318fc619Ee8aE80DD3c9f92Dc65e) |
+| **GOOGLx Pool** | `0xeD299858B4F95c30F3fceE9209fBbeA7138cE854` | [BscScan](https://testnet.bscscan.com/address/0xeD299858B4F95c30F3fceE9209fBbeA7138cE854) |
+| **SPYx Pool** | `0x383FF0528b2c1Db2C5D439E5E64157851189ADC4` | [BscScan](https://testnet.bscscan.com/address/0x383FF0528b2c1Db2C5D439E5E64157851189ADC4) |
+
+---
+
+## 🔒 Privacy Model (The "Dumb Store")
+
+Obolus implements a "Dumb Store" architecture where the server is intentionally blind to user balances:
+
+| Data | Server | TEE (CRE) | On-Chain |
 |------|--------|-----------|----------|
-| Position amounts | Ciphertext only | Plaintext during settlement (ephemeral) | Never visible (pool wallet) |
-| Token types | Visible | Visible | Vault-level only |
-| User addresses | Visible | Visible | Deposit tx only |
-| NAV values | Encrypted per-user | Computed each cycle | Not visible |
-| Oracle prices | Visible | Visible | On-chain (ObolusOracle) |
-
----
-
-## 📡 Live Protocol Addresses (BSC Testnet)
-
-- **RWAVault**: `0x772C9513fFcffaed224048b3e22AcF9E58854b73`
-- **ObolusOracle**: `0xb0ab8015Ce10593eE9a26E78B0BeDBc21330ba23`
-- **GM Tokens (9 Assets)**: TSLAx, AAPLx, NVDAon, GOOGLx, SPYx, CRCLX, MUon, QQQon, AMZNon
-
----
-
-## 🛠️ Development Setup
-
-### Installation
-```bash
-npm install
-```
-
-### Environment Variables
-Create a `.env.local`:
-```bash
-NEXT_PUBLIC_SERVER_URL=http://localhost:3000
-NEXT_PUBLIC_BSC_RPC=https://data-seed-prebsc-1-s1.binance.org:8545
-CRE_PUBLIC_KEY=04...hex...
-POOL_WALLET_ADDRESS=0x...
-INTERNAL_API_KEY=your-secret-key
-```
-
-### Running Locally
-```bash
-npm run dev
-```
-
-### CRE Workflows
-```bash
-cd obolus-settler
-# Install dependencies for each workflow
-cd settle-positions && npm install && cd ..
-cd execute-transfers && npm install && cd ..
-cd health-monitor && npm install && cd ..
-
-# Simulate a workflow
-cre workflow simulate ./settle-positions --target=staging-settings --non-interactive --trigger-index=0
-```
+| **Position amounts** | Encrypted blobs | Decrypted in-memory | Hidden in Pool Wallet |
+| **Token types** | Visible | Visible | Public (Vault/Pool) |
+| **User identities** | Visible (Address) | Verified | Visible (Deposits) |
+| **NAV values** | Computed client-side | Verified for settlement | Hidden |
 
 ---
 
@@ -89,26 +56,41 @@ cre workflow simulate ./settle-positions --target=staging-settings --non-interac
 
 ```
 obolus-network-v2/
-  app/                    Next.js App Router (Faucet, Vaults, Portfolio, Markets)
-    api/v1/               Privacy layer API routes
-      vault/shield/       Shielded deposit endpoint
-      vault/unshield/     Shielded withdrawal endpoint
-      vault/reveal/       Privacy reveal endpoint
-      internal/           CRE-only endpoints (x-api-key auth)
-  hooks/                  Specialized Web3 and privacy hooks
-    useShieldedVault.ts   Ghost-style deposit/withdraw with pool wallet
-    usePrivacyReveal.ts   EIP-712 signed position reveal
-  lib/                    Core libraries
-    encryption.ts         ECIES encryption for CRE
-    eip712.ts             EIP-712 typed data definitions
-    privacy-types.ts      Privacy layer type definitions
-    server/               Server-side state and auth
-  components/             UI components (Neon Confidential design)
-  obolus-settler/         Chainlink CRE workflows
-    settle-positions/     NAV settlement (30s cycle)
-    execute-transfers/    Transfer execution (15s cycle)
-    health-monitor/       Pool health monitoring (60s cycle)
+  app/                    Next.js App Router
+    api/v1/               Privacy layer API (Next.js serverless)
+      vault/shield/       Shielding logic (Token -> Pool Wallet)
+      vault/reveal/       Client-side decryption handler
+  hooks/                  Privacy-aware React hooks
+    usePrivacyReveal.ts   Local AES key derivation from EIP-712
+    useShieldedVault.ts   Interaction with RWAVault and Pool
+  lib/                    Core cryptographic utilities
+    encryption.ts         ECIES implementation for secp256k1
+    eip712.ts             Typed data domains and messages
+  components/             "Neon Confidential" UI components
 ```
+
+## 🛠️ Development Setup
+
+### 1. Installation
+```bash
+npm install
+```
+
+### 2. Environment Configuration
+Create a `.env.local` file:
+```bash
+NEXT_PUBLIC_DEPLOYER_ADDRESS=0x...
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=97
+NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+NEXT_PUBLIC_POOL_WALLET_ADDRESS=0x...
+```
+
+### 3. Run Development Server
+```bash
+npm run dev
+```
+
+---
 
 ## 🏆 RWA Demo Day
 Built for the **BNB Chain RWA Demo Day (March 2026)** — showcasing institutional privacy for RWA liquidity via Chainlink CRE.
