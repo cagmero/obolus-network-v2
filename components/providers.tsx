@@ -11,6 +11,8 @@ import { WagmiProvider } from 'wagmi'
 import { ThemeProvider } from './theme-provider'
 import { config } from '@/lib/wagmi'
 
+import { Toaster } from "@/components/ui/sonner"
+
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient())
   const [mounted, setMounted] = useState(false)
@@ -35,6 +37,7 @@ export function Providers({ children }: { children: ReactNode }) {
         >
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             {children}
+            <Toaster position="top-right" richColors closeButton />
           </ThemeProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

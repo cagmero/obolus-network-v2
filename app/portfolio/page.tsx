@@ -114,69 +114,9 @@ export default function PortfolioPage() {
   }, 0)
 
   return (
-    <div className="min-h-screen bg-transparent flex">
-      {/* Left Sidebar: Security Logs */}
-      <aside className="w-[320px] shrink-0 border-r border-border/10 bg-black/40 backdrop-blur-3xl p-6 flex flex-col gap-8 sticky top-0 h-screen hidden xl:flex">
-         <div className="space-y-1">
-            <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">SECURITY_DAEMON // v0.1.2</h3>
-            <p className="text-[9px] text-foreground/30 font-bold uppercase tracking-widest leading-relaxed">
-               Monitoring local browser memory and EIP-712 session derivation.
-            </p>
-         </div>
-
-         <div className="flex-1 overflow-hidden flex flex-col gap-4">
-            <div className="flex items-center justify-between px-2">
-               <span className="text-[9px] font-black text-foreground/40 uppercase tracking-widest">LIVE_EVENT_LOG</span>
-               <div className="flex items-center gap-1">
-                  <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
-                  <span className="text-[8px] font-black text-primary/60 uppercase">ACTIVE</span>
-               </div>
-            </div>
-            
-            <div className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-hide">
-               {logs.map((log, i) => (
-                  <div key={i} className={cn(
-                    "p-3 rounded-lg border flex flex-col gap-1 transition-all duration-500",
-                    log.type === 'success' ? "bg-green-500/5 border-green-500/10" : 
-                    log.type === 'warn' ? "bg-primary/5 border-primary/10" :
-                    log.type === 'error' ? "bg-red-500/5 border-red-500/10" :
-                    "bg-white/5 border-white/10"
-                  )}>
-                     <div className="flex items-center justify-between">
-                        <span className={cn(
-                          "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
-                          log.type === 'success' ? "bg-green-500/20 text-green-500" :
-                          log.type === 'warn' ? "bg-primary/20 text-primary" :
-                          log.type === 'error' ? "bg-red-500/20 text-red-500" :
-                          "bg-white/10 text-foreground/60"
-                        )}>{log.status}</span>
-                         <span className="text-[8px] text-foreground/20 font-bold">{new Date().toLocaleTimeString()}</span>
-                     </div>
-                     <span className="text-[10px] font-mono font-bold text-foreground/80 break-words leading-tight">
-                        {log.msg}
-                     </span>
-                  </div>
-               ))}
-            </div>
-         </div>
-
-         <div className="p-4 rounded-2xl bg-white/5 border border-border/10 space-y-3">
-            <div className="flex items-center gap-2">
-               <ShieldCheck className="w-4 h-4 text-primary" />
-               <span className="text-[9px] font-black text-foreground uppercase tracking-widest">ENCRYPTION_STATUS</span>
-            </div>
-            <div className="space-y-1">
-               <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-foreground/40">
-                  <span>AES-GCM-256</span>
-                  <span className="text-primary">ENFORCED</span>
-               </div>
-               <Progress value={showValues ? 100 : 0} className="h-1 bg-white/5" />
-            </div>
-         </div>
-      </aside>
-
+    <div className="min-h-screen bg-transparent flex flex-col xl:flex-row">
       {/* Main Content: Portfolio (Full Width) */}
-      <main className="flex-1 py-10 px-8 space-y-10">
+      <main className="flex-1 py-10 px-8 space-y-10 order-2 xl:order-1">
         {/* Portfolio Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-4">
@@ -313,11 +253,20 @@ export default function PortfolioPage() {
                     <tr key={symbol} className="group hover:bg-white/[0.02] transition-colors">
                       <td className="px-10 py-8">
                         <div className="flex items-center gap-4">
-                          <div 
-                            className="w-10 h-10 rounded-xl flex items-center justify-center font-black"
-                            style={{ backgroundColor: `${vault?.color}10`, color: vault?.color, border: `1px solid ${vault?.color}30` }}
-                          >
-                            {symbol[0]}
+                          <div className="relative">
+                            <div 
+                              className="w-12 h-12 rounded-2xl flex items-center justify-center font-black relative z-10 overflow-hidden border border-white/5 bg-white/5 shadow-inner"
+                              style={{ backgroundColor: `${vault?.color}10`, color: vault?.color }}
+                            >
+                               <img 
+                                src={`/stocks/${symbol.replace(/x$|on$|X$/i, '')}.png`} 
+                                alt={symbol} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => (e.currentTarget.style.display = 'none')}
+                               />
+                               <span className="absolute inset-0 flex items-center justify-center text-lg opacity-20">{symbol[0]}</span>
+                            </div>
+                            <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full" style={{ backgroundColor: vault?.color }} />
                           </div>
                           <div>
                             <p className="text-sm font-black text-foreground uppercase">{symbol}</p>
@@ -341,7 +290,7 @@ export default function PortfolioPage() {
                       <td className="px-10 py-8 text-right">
                          <Link href={`/vault/${vault?.id}`}>
                             <Button variant="ghost" className="h-10 rounded-xl px-6 border border-border/10 hover:border-primary/40 text-[10px] font-black uppercase tracking-widest">
-                               DETAILED_VIEW
+                                DETAILED_VIEW
                             </Button>
                          </Link>
                       </td>
@@ -401,6 +350,66 @@ export default function PortfolioPage() {
            </div>
         </div>
       </main>
+
+      {/* Right Sidebar: Security Logs */}
+      <aside className="w-[320px] shrink-0 border-l border-border/10 bg-black/40 backdrop-blur-3xl p-6 flex flex-col gap-8 sticky top-0 h-screen hidden xl:flex order-1 xl:order-2">
+         <div className="space-y-1">
+            <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">SECURITY_DAEMON // v0.1.2</h3>
+            <p className="text-[9px] text-foreground/30 font-bold uppercase tracking-widest leading-relaxed">
+               Monitoring local browser memory and EIP-712 session derivation.
+            </p>
+         </div>
+
+         <div className="flex-1 overflow-hidden flex flex-col gap-4">
+            <div className="flex items-center justify-between px-2">
+               <span className="text-[9px] font-black text-foreground/40 uppercase tracking-widest">LIVE_EVENT_LOG</span>
+               <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[8px] font-black text-primary/60 uppercase">ACTIVE</span>
+               </div>
+            </div>
+            
+            <div className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-hide">
+               {logs.map((log, i) => (
+                  <div key={i} className={cn(
+                    "p-3 rounded-lg border flex flex-col gap-1 transition-all duration-500",
+                    log.type === 'success' ? "bg-green-500/5 border-green-500/10" : 
+                    log.type === 'warn' ? "bg-primary/5 border-primary/10" :
+                    log.type === 'error' ? "bg-red-500/5 border-red-500/10" :
+                    "bg-white/5 border-white/10"
+                  )}>
+                     <div className="flex items-center justify-between">
+                        <span className={cn(
+                          "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
+                          log.type === 'success' ? "bg-green-500/20 text-green-500" :
+                          log.type === 'warn' ? "bg-primary/20 text-primary" :
+                          log.type === 'error' ? "bg-red-500/20 text-red-500" :
+                          "bg-white/10 text-foreground/60"
+                        )}>{log.status}</span>
+                         <span className="text-[8px] text-foreground/20 font-bold">{new Date().toLocaleTimeString()}</span>
+                     </div>
+                     <span className="text-[10px] font-mono font-bold text-foreground/80 break-words leading-tight">
+                        {log.msg}
+                     </span>
+                  </div>
+               ))}
+            </div>
+         </div>
+
+         <div className="p-4 rounded-2xl bg-white/5 border border-border/10 space-y-3">
+            <div className="flex items-center gap-2">
+               <ShieldCheck className="w-4 h-4 text-primary" />
+               <span className="text-[9px] font-black text-foreground uppercase tracking-widest">ENCRYPTION_STATUS</span>
+            </div>
+            <div className="space-y-1">
+               <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-foreground/40">
+                  <span>AES-GCM-256</span>
+                  <span className="text-primary">ENFORCED</span>
+               </div>
+               <Progress value={showValues ? 100 : 0} className="h-1 bg-white/5" />
+            </div>
+         </div>
+      </aside>
     </div>
   )
 }

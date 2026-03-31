@@ -42,7 +42,7 @@ export default function VaultsPage() {
   })
 
   return (
-    <div className="flex flex-col gap-8 font-mono pb-20 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-8 font-mono pb-20 w-full px-6 lg:px-12">
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/20 pb-6">
         <div>
@@ -105,30 +105,30 @@ export default function VaultsPage() {
       </div>
 
       {/* Table Header / Sort Controls */}
-      <div className="bg-white/5 border border-border/20 rounded-2xl overflow-hidden backdrop-blur-sm">
+      <div className="bg-white/5 border border-border/20 rounded-2xl overflow-hidden backdrop-blur-sm shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-border/10 bg-white/5">
-                <th className="px-6 py-4">
+              <tr className="border-b border-border/10 bg-black/20">
+                <th className="px-6 py-5">
                   <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Asset</span>
                 </th>
-                <th className="px-6 py-4">
+                <th className="px-6 py-5">
                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
                     <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Live Price</span>
                     <ArrowUpDown className="w-3 h-3 text-foreground/20" />
                   </div>
                 </th>
-                <th className="px-6 py-4">
+                <th className="px-6 py-5">
                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
                     <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">APY</span>
                     <ArrowUpDown className="w-3 h-3 text-foreground/20" />
                   </div>
                 </th>
-                <th className="px-6 py-4">
+                <th className="px-6 py-5">
                   <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest text-right">7D_TREND</span>
                 </th>
-                <th className="px-6 py-4 text-right">
+                <th className="px-6 py-5 text-right">
                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Action</span>
                 </th>
               </tr>
@@ -166,14 +166,31 @@ function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: b
   const data = prices?.[vault.symbol]
   const currentPrice = data?.price
 
+  // Strip suffixes (x, on, X, on) to match files in /public/stocks/
+  const cleanSymbol = vault.symbol.replace(/x$|on$|X$/i, '')
+  const logoUrl = `/stocks/${cleanSymbol}.png`
+
   return (
     <tr key={vault.id} className="group hover:bg-white/5 transition-colors border-b border-border/5 last:border-0 relative">
-      <td className="px-6 py-5">
+      <td className="px-6 py-6">
          <div className="flex items-center gap-4">
-            <div className={cn("w-1 h-8 rounded-full")} style={{ backgroundColor: vault.color }} />
+            <div className="relative">
+              <div 
+                className="w-12 h-12 rounded-2xl flex items-center justify-center font-black relative z-10 overflow-hidden border border-white/5 bg-white/5 shadow-inner"
+              >
+                <img 
+                  src={logoUrl} 
+                  alt={vault.symbol} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => (e.currentTarget.style.display = 'none')} 
+                />
+                <span className="absolute inset-0 flex items-center justify-center text-lg opacity-20">{vault.symbol[0]}</span>
+              </div>
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full" style={{ backgroundColor: vault.color }} />
+            </div>
             <div className="flex flex-col">
                <div className="flex items-center gap-2">
-                 <span className="text-sm font-black text-foreground uppercase tracking-tight">{vault.symbol}</span>
+                 <span className="text-base font-black text-foreground uppercase tracking-tight">{vault.symbol}</span>
                  {isLocalhost && (
                     <span className="text-[8px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1 py-0.5 rounded font-black tracking-tighter">LOCAL_TESTNET</span>
                  )}

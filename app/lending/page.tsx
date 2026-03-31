@@ -113,8 +113,17 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
       <div className="p-5 border-b border-border/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm">
-              {token.symbol[0]}
+            <div className="relative">
+              <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-border/20 flex items-center justify-center text-primary font-black text-sm relative z-10 overflow-hidden bg-white/5">
+                 <img 
+                  src={`/stocks/${token.symbol.replace(/x$|on$|X$/i, '')}.png`} 
+                  alt={token.symbol} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                 />
+                 <span className="absolute inset-0 flex items-center justify-center text-lg opacity-20">{token.symbol[0]}</span>
+              </div>
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-primary" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">{token.symbol}</h3>
