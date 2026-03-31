@@ -50,8 +50,12 @@ export const api = {
     let url: string;
     if (endpoint.startsWith('http')) {
       url = endpoint;
+    } else if (isLocalRoute(endpoint)) {
+      // Stay on same origin for local Next.js API routes
+      url = `/api/v1${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
     } else {
-      // Use relative URL (same origin) — Next.js rewrites will proxy to port 3001
+      // Use absolute URL for backend routes to ensure they hit the rewrite correctly
+      // (Next.js rewrites can also be configured to handle absolute URLs if needed)
       url = `/api/v1${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
     }
     

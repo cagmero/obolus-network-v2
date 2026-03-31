@@ -53,8 +53,9 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/v1/:path*',
-        destination: 'http://209.38.22.81:3001/api/v1/:path*',
+        // Proxy all /api/v1/ requests EXCEPT the ones handled locally by Next.js
+        source: '/api/v1/((?!vault/shield|vault/unshield|vault/reveal|vault/transfer-status|cre-public-key|internal).*)',
+        destination: 'http://209.38.22.81:3001/api/v1/:1',
       },
     ]
   },
