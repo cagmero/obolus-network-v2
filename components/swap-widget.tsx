@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi"
+import { useQueryClient } from "@tanstack/react-query"
 import { parseEther, formatEther, formatUnits } from "viem"
 import { ArrowDownUp, ChevronDown, Loader2, AlertCircle, Settings, ShieldCheck, Zap, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -129,6 +130,9 @@ export function SwapWidget() {
 
   const amountOut = oracleMode ? (parseFloat(oracleAmountOut) > 0 ? oracleAmountOut : ammAmountOutRaw) : ammAmountOutRaw
 
+  const queryClient = useQueryClient()
+  const publicClient = usePublicClient()
+
   // Get pool info
   const { data: poolInfo } = useReadContract({
     address: ammAddress,
@@ -155,13 +159,15 @@ export function SwapWidget() {
     query: { enabled: !!address },
   })
 
-  // Check allowance
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: tokenIn.address,
     abi: ERC20ABI,
     functionName: 'allowance',
     args: address && ammAddress ? [address, ammAddress] : undefined,
-    query: { enabled: !!address && !!ammAddress },
+    query: { 
+      enabled: !!address && !!ammAddress,
+      refetchInterval: 5000 
+    },
   })
 
   const needsApproval = amountIn && parseFloat(amountIn) > 0 && allowance !== undefined
@@ -172,7 +178,7 @@ export function SwapWidget() {
   const { writeContract: approve, data: approveTxHash, isPending: isApproving } = useWriteContract()
   const { writeContract: swap, data: swapTxHash, isPending: isSwapping } = useWriteContract()
 
-  const { isLoading: isApproveConfirming } = useWaitForTransactionReceipt({ hash: approveTxHash })
+  const { isLoading: isApproveConfirming, isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash })
   const { isLoading: isSwapConfirming, isSuccess: swapSuccess } = useWaitForTransactionReceipt({ hash: swapTxHash })
 
   // Flip tokens
@@ -180,7 +186,9 @@ export function SwapWidget() {
     setTokenIn(tokenOut)
     setTokenOut(tokenIn)
     setAmountIn("")
-  }, [tokenIn, tokenOut])
+    // Invalidate everything to be safe
+    queryClient.invalidateQueries()
+  }, [tokenIn, tokenOut, queryClient])
 
   // Handle approve
   const handleApprove = () => {
@@ -189,12 +197,23 @@ export function SwapWidget() {
       address: tokenIn.address,
       abi: ERC20ABI,
       functionName: 'approve',
-      args: [ammAddress, parseEther("1000000000")],
+      args: [ammAddress, parseEther("1000000000000")], // Ultra large approval
     }, {
-      onSuccess: () => toast.success(`Approval for ${tokenIn.symbol} submitted`),
+      onSuccess: () => {
+        toast.success(`Approval for ${tokenIn.symbol} submitted`)
+      },
       onError: (err) => toast.error(`Approval failed: ${err.message.slice(0, 50)}...`),
     })
   }
+
+  // Refetch stuff when transactions finish
+  useEffect(() => {
+    if (approveSuccess) {
+      toast.success("Allowance updated!")
+      refetchAllowance()
+      queryClient.invalidateQueries()
+    }
+  }, [approveSuccess, refetchAllowance, queryClient])
 
   // Handle swap
   const handleSwap = () => {
@@ -218,6 +237,7 @@ export function SwapWidget() {
     if (swapSuccess) {
       toast.success(`Successfully swapped for ${tokenOut.symbol}!`)
       setAmountIn("")
+      queryClient.invalidateQueries()
     }
   }, [swapSuccess, tokenOut.symbol])
 
