@@ -26,7 +26,10 @@
     "AMZNon": "0x6E7f4106Fe51CB751a82BEfAD45d3b386301cCde",
     "chainId": 97,
     "deployer": "0x0121Cb33BdAeEb8f400b27c0D5f3C7916C77F453",
-    "deployedAt": "2026-03-30T14:59:21.105Z",
-    "SyntheticSharesOracle": "0xF4Fd8a1B412633e10527454137A29Db7Aa35F15e"
+    "deployedAt": "2026-03-31T06:45:43.391Z",
+    "SyntheticSharesOracle": "0xF4Fd8a1B412633e10527454137A29Db7Aa35F15e",
+    "oUSD": "0xfCaBa68297d86E56e01E8e9CcB88AF06bc093b9E",
+    "ObolusAMM": "0x41a6493078fCF8D554DF94769F9B3b201756cb58",
+    "LendingPools": {}
   }
 }

@@ -18,6 +18,8 @@ export const OBOLUS_ADDRESSES = {
   bscTestnet: {
     RWAVault: "0x772C9513fFcffaed224048b3e22AcF9E58854b73" as const,
     ObolusOracle: "0xb0ab8015Ce10593eE9a26E78B0BeDBc21330ba23" as const,
+    oUSD: "0xfCaBa68297d86E56e01E8e9CcB88AF06bc093b9E" as const,
+    ObolusAMM: "0x41a6493078fCF8D554DF94769F9B3b201756cb58" as const,
     TSLAx: "0x2B05DC386bbe679fD22eDE500b52B858B86B3778" as const,
     AAPLx: "0x11ba0F051f6859a8BBb98cCa14B40F280FcB96F0" as const,
     NVDAon: "0x235a45B9d8A51c1D4aCFd2d4EaA9bA2B263E0c78" as const,

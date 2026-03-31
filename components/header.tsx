@@ -10,11 +10,12 @@ import { cn } from "@/lib/utils"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
 
 const NAV = [
+  { href: "/", label: "Swap" },
   { href: "/vaults", label: "Vaults" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/markets", label: "Markets" },
+  { href: "/lending", label: "Lend" },
   { href: "/privacy", label: "Privacy" },
-  { href: "/transactions", label: "Transactions" },
   { href: "/faucet", label: "FAUCET", isSpecial: true },
 ]
 
