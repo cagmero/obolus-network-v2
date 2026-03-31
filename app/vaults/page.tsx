@@ -184,7 +184,6 @@ function VaultRow({ vault, isLocalhost, prices }: { vault: Vault, isLocalhost: b
                   className="w-full h-full object-cover" 
                   onError={(e) => (e.currentTarget.style.display = 'none')} 
                 />
-                <span className="absolute inset-0 flex items-center justify-center text-lg opacity-20">{vault.symbol[0]}</span>
               </div>
               <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full" style={{ backgroundColor: vault.color }} />
             </div>

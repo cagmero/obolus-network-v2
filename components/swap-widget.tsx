@@ -33,7 +33,6 @@ function TokenSelector({ token, onSelect, tokens, label }: TokenSelectorProps) {
             {token.logo ? (
               <img src={token.logo} alt={token.symbol} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
             ) : null}
-            <span className="absolute">{token.symbol[0]}</span>
           </div>
           <span className="text-xs font-bold text-foreground tracking-tight">{token.symbol}</span>
         </div>
@@ -64,7 +63,6 @@ function TokenSelector({ token, onSelect, tokens, label }: TokenSelectorProps) {
                     t.isStable ? "bg-green-500/20 text-green-400" : "bg-primary/20 text-primary"
                   )}>
                     {t.logo ? <img src={t.logo} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" /> : null}
-                    <span className="relative z-10">{t.symbol[0]}</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-white group-hover:text-primary transition-colors">{t.symbol}</span>

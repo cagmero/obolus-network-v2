@@ -32,7 +32,7 @@ export const SWAP_TOKENS: SwapToken[] = [
     symbol: 'oUSD',
     name: 'Obolus Stablecoin',
     address: DEFI_ADDRESSES.oUSD as `0x${string}`,
-    logo: '/placeholder-logo.svg',
+    logo: '/logo-only.png',
     isStable: true,
     decimals: 18,
   },

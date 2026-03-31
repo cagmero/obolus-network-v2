@@ -214,7 +214,6 @@ function TokenCard({ symbol, address, balance, onClaim, isMinting }: {
               className="w-full h-full object-cover"
               onError={(e) => (e.currentTarget.style.display = 'none')}
              />
-             <span className="absolute inset-0 flex items-center justify-center text-xl opacity-20">{symbol[0]}</span>
           </div>
           <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-amber-500/40" />
         </div>
