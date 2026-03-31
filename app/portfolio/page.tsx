@@ -83,20 +83,22 @@ export default function PortfolioPage() {
     }
   }
 
-  // Calculate total portfolio value
-  const activePositions = Object.entries(positions || {})
-    .filter(([_, pos]) => pos.hasPosition)
-    .map(([symbol, pos]) => {
-      const vault = VAULTS.find(v => v.symbol === symbol)
-      const marketPrice = prices?.[symbol]?.price || 150.00
+  // Calculate all vault positions (including 0 balance)
+  const allVaultPositions = useMemo(() => {
+    return VAULTS.map(vault => {
+      const pos = positions?.[vault.symbol] || { formatted: '0', hasPosition: false, raw: BigInt(0) }
+      const marketPrice = prices?.[vault.symbol]?.price || 150.00
       return {
-        symbol,
+        symbol: vault.symbol,
         pos,
         vault,
         price: marketPrice,
         value: parseFloat(pos.formatted) * marketPrice
       }
     })
+  }, [positions, prices])
+
+  const activePositions = allVaultPositions.filter(p => p.pos.hasPosition)
 
   const totalValue = activePositions.reduce((acc, curr) => acc + curr.value, 0)
   const totalChange24h = activePositions.reduce((acc, curr) => {
@@ -306,7 +308,7 @@ export default function PortfolioPage() {
 
         {/* Rebalancer Section */}
         <RebalancerSection 
-          activePositions={activePositions} 
+          activePositions={allVaultPositions} 
           showValues={showValues} 
           totalValue={totalValue}
           addLog={addLog}

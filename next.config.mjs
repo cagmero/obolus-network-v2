@@ -50,6 +50,14 @@ const nextConfig = {
     }
     return config
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: 'http://209.38.22.81:3001/api/v1/:path*',
+      },
+    ]
+  },
 }
 
 export default nextConfig

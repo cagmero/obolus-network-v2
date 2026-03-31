@@ -50,12 +50,9 @@ export const api = {
     let url: string;
     if (endpoint.startsWith('http')) {
       url = endpoint;
-    } else if (isLocalRoute(endpoint)) {
-      // Next.js API route — use relative URL (same origin, port 3000)
-      url = `/api/v1${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
     } else {
-      // External backend (port 3001)
-      url = `${SERVER_URL}${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
+      // Use relative URL (same origin) — Next.js rewrites will proxy to port 3001
+      url = `/api/v1${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
     }
     
     console.log(`[OBOLUS:API] → ${fetchOptions.method || 'GET'} ${endpoint}`);

@@ -95,20 +95,33 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
       queryClient.invalidateQueries()
       toast.success("Transaction confirmed")
       setAmount("")
-      reset()
+      // Don't reset() here, let the modal show the success state
     }
     if (isError) {
       toast.error(txError?.message || "Transaction failed")
-      reset()
     }
-  }, [isSuccess, isError, txError, queryClient, reset])
+  }, [isSuccess, isError, txError, queryClient])
+
+  const handleCloseModal = () => {
+    setModalOpen(false)
+    setTimeout(() => {
+      reset() // Reset wagmi state after modal is closed
+    }, 200)
+  }
 
   const stats = poolStats as any
   const zero = BigInt(0)
-  const utilization = stats ? Number(stats._utilizationBps || zero) / 100 : 0
-  const totalLent = stats ? parseFloat(formatEther(stats._totalLent || zero)) : 0
-  const totalBorrowed = stats ? parseFloat(formatEther(stats._totalBorrowed || zero)) : 0
-  const available = stats ? parseFloat(formatEther(stats._available || zero)) : 0
+  
+  // Safely extract stats whether they come as an array or object
+  const _totalLent = stats?._totalLent ?? (Array.isArray(stats) ? stats[0] : zero)
+  const _totalBorrowed = stats?._totalBorrowed ?? (Array.isArray(stats) ? stats[1] : zero)
+  const _available = stats?._available ?? (Array.isArray(stats) ? stats[2] : zero)
+  const _utilizationBps = stats?._utilizationBps ?? (Array.isArray(stats) ? stats[3] : zero)
+
+  const utilization = Number(_utilizationBps) / 100
+  const totalLent = parseFloat(formatEther(_totalLent))
+  const totalBorrowed = parseFloat(formatEther(_totalBorrowed))
+  const available = parseFloat(formatEther(_available))
 
   const handleLend = () => {
     if (!poolAddress || !amount) return
@@ -396,11 +409,7 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
                   </div>
                   
                   <Button 
-                    onClick={() => {
-                      setModalOpen(false)
-                      // Small delay before reset to let success state show
-                      setTimeout(() => reset(), 100);
-                    }} 
+                    onClick={handleCloseModal} 
                     variant="outline" 
                     className="w-full border-border/20 uppercase text-[10px] font-black h-12 rounded-xl"
                   >
@@ -416,7 +425,7 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
                   </div>
                   <p className="text-sm font-bold text-red-400">Transaction Failed</p>
                   <p className="text-[10px] text-foreground/60 text-center px-4">{txError?.message.slice(0, 100)}...</p>
-                  <Button onClick={() => setModalOpen(false)} className="w-full bg-white/5 hover:bg-white/10 uppercase text-[10px] font-black">Retry</Button>
+                  <Button onClick={handleCloseModal} className="w-full bg-white/5 hover:bg-white/10 uppercase text-[10px] font-black">Retry</Button>
                 </>
               )}
             </div>
