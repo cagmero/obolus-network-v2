@@ -300,9 +300,9 @@ export default function VaultDetailPage() {
                     </div>
 
                     <div className="space-y-3">
-                       <StatusStep label="Step 1: Approve + Deposit" completed={['signing', 'encrypting', 'shielding', 'complete'].includes(depositStep) || withdrawStep === 'complete'} loading={depositStep === 'approving' || depositStep === 'depositing'} />
-                       <StatusStep label="Step 2: EIP-712 Signature" completed={['encrypting', 'shielding', 'complete'].includes(depositStep) || ['queued', 'executing', 'complete'].includes(withdrawStep)} loading={depositStep === 'signing' || withdrawStep === 'signing'} />
-                       <StatusStep label="Step 3: ECIES Encrypt + Shield" completed={depositStep === 'complete' || withdrawStep === 'complete'} loading={depositStep === 'encrypting' || depositStep === 'shielding' || withdrawStep === 'queued' || withdrawStep === 'executing'} />
+                       <StatusStep label="Step 1: Approve + Deposit" description="Token approval & on-chain deposit into ShieldedVault" completed={['signing', 'encrypting', 'shielding', 'complete'].includes(depositStep) || withdrawStep === 'complete'} loading={depositStep === 'approving' || depositStep === 'depositing'} />
+                       <StatusStep label="Step 2: EIP-712 Signature" description="Wallet signs typed data to authorize shielded transfer" completed={['encrypting', 'shielding', 'complete'].includes(depositStep) || ['queued', 'executing', 'complete'].includes(withdrawStep)} loading={depositStep === 'signing' || withdrawStep === 'signing'} />
+                       <StatusStep label="Step 3: ECIES Encrypt + Shield" description="Amount encrypted with CRE public key & sent to pool" completed={depositStep === 'complete' || withdrawStep === 'complete'} loading={depositStep === 'encrypting' || depositStep === 'shielding' || withdrawStep === 'queued' || withdrawStep === 'executing'} />
                     </div>
 
                     {(depositTxHash || withdrawTransferId) && (
@@ -312,7 +312,11 @@ export default function VaultDetailPage() {
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 bg-black/40 rounded-xl group/link"
                       >
-                         <span className="text-[8px] font-mono text-foreground/40">{depositTxHash || `Transfer: ${withdrawTransferId}`}</span>
+                         <span className="text-[8px] font-mono text-foreground/40">
+                           {depositTxHash 
+                             ? `${depositTxHash.slice(0, 10)}...${depositTxHash.slice(-8)}`
+                             : `Transfer: ${withdrawTransferId?.slice(0, 10)}...${withdrawTransferId?.slice(-8)}`}
+                         </span>
                          <ExternalLink className="w-3 h-3 text-primary/40 group-hover/link:text-primary" />
                       </a>
                     )}
@@ -365,19 +369,27 @@ function Badge({ label }: { label: string }) {
 }
 
 
-function StatusStep({ label, completed, loading }: { label: string, completed: boolean, loading: boolean }) {
+function StatusStep({ label, description, completed, loading }: { label: string, description?: string, completed: boolean, loading: boolean }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className={cn(
-        "text-[10px] font-bold uppercase tracking-tight",
-        completed ? "text-foreground" : loading ? "text-primary" : "text-foreground/20"
-      )}>{label}</span>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex-1 min-w-0">
+        <span className={cn(
+          "text-[10px] font-bold uppercase tracking-tight block",
+          completed ? "text-foreground" : loading ? "text-primary" : "text-foreground/20"
+        )}>{label}</span>
+        {description && (
+          <span className={cn(
+            "text-[8px] font-medium tracking-wide block mt-0.5",
+            completed ? "text-foreground/40" : loading ? "text-primary/50" : "text-foreground/10"
+          )}>{description}</span>
+        )}
+      </div>
       {completed ? (
-        <CheckCircle2 className="w-4 h-4 text-green-500" />
+        <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
       ) : loading ? (
-        <RefreshCw className="w-4 h-4 text-primary animate-spin" />
+        <RefreshCw className="w-4 h-4 text-primary animate-spin shrink-0" />
       ) : (
-        <div className="w-4 h-4 rounded-full border-2 border-foreground/10" />
+        <div className="w-4 h-4 rounded-full border-2 border-foreground/10 shrink-0" />
       )}
     </div>
   )

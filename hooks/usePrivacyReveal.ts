@@ -11,7 +11,6 @@
 import { useState, useCallback } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { OBOLUS_DOMAIN, EIP712_TYPES } from '@/lib/eip712';
-import { decryptUserData } from '@/lib/encryption';
 import { api } from '@/lib/api';
 
 export interface RevealedPosition {
@@ -64,17 +63,13 @@ export function usePrivacyReveal() {
         auth: signature,
       });
 
-      // Decrypt each position locally
-      const decrypted: RevealedPosition[] = [];
-      for (const pos of result.positions) {
-        const amount = await decryptUserData(pos.encryptedAmount, signature);
-        decrypted.push({
-          token: pos.token,
-          tokenSymbol: pos.tokenSymbol,
-          amount,
-          shares: pos.shares,
-        });
-      }
+      // Positions are already decrypted server-side (CRE private key in demo mode)
+      const decrypted: RevealedPosition[] = result.positions.map(pos => ({
+        token: pos.token,
+        tokenSymbol: pos.tokenSymbol,
+        amount: pos.encryptedAmount,
+        shares: pos.shares,
+      }));
 
       setPositions(decrypted);
       setRevealed(true);
