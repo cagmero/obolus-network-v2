@@ -209,7 +209,7 @@ function TokenCard({ symbol, address, balance, onClaim, isMinting }: {
         <div className="relative">
           <div className="w-14 h-14 rounded-2xl bg-foreground/5 border border-border/20 flex items-center justify-center text-lg font-black text-foreground relative z-10 overflow-hidden bg-white/5">
              <img 
-              src={`/stocks/${symbol.replace(/x$|on$|X$/i, '')}.png`} 
+              src={symbol === 'oUSD' ? '/logo-only.png' : `/stocks/${symbol.replace(/x$|on$|X$/i, '')}.png`} 
               alt={symbol} 
               className="w-full h-full object-cover"
               onError={(e) => (e.currentTarget.style.display = 'none')}
