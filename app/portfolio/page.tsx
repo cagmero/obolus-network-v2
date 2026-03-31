@@ -205,7 +205,7 @@ export default function PortfolioPage() {
         {/* holdings Section */}
         <div className="space-y-6">
           <div className="flex items-center justify-between px-4">
-            <h2 className="text-xs font-black text-foreground/40 uppercase tracking-[0.3em]">YOUR_ON_CHAIN_HOLDINGS // {activePositions.length}</h2>
+            <h2 className="text-xs font-black text-foreground/40 uppercase tracking-[0.3em]">AVAILABLE_VAULT_HOLDINGS // {allVaultPositions.length}</h2>
             <div className="flex bg-white/5 p-1 rounded-xl border border-border/10">
               <button 
                 onClick={() => setViewMode('list')}
@@ -222,13 +222,13 @@ export default function PortfolioPage() {
             </div>
           </div>
 
-          {activePositions.length > 0 ? (
+          {allVaultPositions.length > 0 ? (
             <div className="bg-white/5 border border-border/20 rounded-[40px] overflow-hidden backdrop-blur-sm shadow-2xl">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-border/10 bg-black/40">
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">ASSET_IDENTITY</th>
-                    <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">ENCRYPTED_BALANCE</th>
+                    <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">POSITION_STATUS</th>
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">UNIT_PRICE</th>
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">MARKET_VALUE</th>
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">7D_TREND</th>
@@ -236,7 +236,7 @@ export default function PortfolioPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/10">
-                  {activePositions.map(({ symbol, pos, vault, price, value }) => (
+                  {allVaultPositions.map(({ symbol, pos, vault, price, value }) => (
                     <tr key={symbol} className="group hover:bg-white/[0.02] transition-colors">
                       <td className="px-10 py-8">
                         <div className="flex items-center gap-4">
@@ -261,9 +261,21 @@ export default function PortfolioPage() {
                         </div>
                       </td>
                       <td className="px-10 py-8">
-                         <code className={cn("text-xs font-mono font-bold transition-all tabular-nums", showValues ? "text-foreground" : "text-primary/40 blur-sm")}>
-                            {showValues ? `${parseFloat(pos.formatted).toFixed(4)} ${symbol}` : 'XXXXXXXXXXXXXXXX'}
-                         </code>
+                         <div className="flex flex-col gap-1">
+                            <code className={cn("text-xs font-mono font-bold transition-all tabular-nums", showValues ? "text-foreground" : "text-primary/40 blur-sm")}>
+                               {pos.hasPosition ? (
+                                 showValues ? `${parseFloat(pos.formatted).toFixed(4)} ${symbol}` : 'XXXXXXXXXXXXXXXX'
+                               ) : (
+                                 <span className="text-[10px] text-foreground/20 font-black">READY_FOR_SHIELDING</span>
+                               )}
+                            </code>
+                            {!pos.hasPosition && (
+                               <div className="flex items-center gap-1.5 opacity-30">
+                                  <div className="w-1 h-1 rounded-full bg-foreground" />
+                                  <span className="text-[8px] font-black uppercase">NO_ACTIVE_BALANCE</span>
+                               </div>
+                            )}
+                         </div>
                       </td>
                       <td className="px-10 py-8">
                          <p className="text-xs font-black text-foreground/60 tabular-nums">${price.toFixed(2)}</p>
