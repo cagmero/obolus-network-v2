@@ -18,7 +18,7 @@ export function LandingPage() {
                             <path d="M 500, 500 m -400, 0 a 400,400 0 1,1 800,0 a 400,400 0 1,1 -800,0" fill="transparent" id="circlePath"></path>
                             <text className="text-ring">
                                 <textPath xlinkHref="#circlePath">
-                                    DECENTRALIZED CROSS-CHAIN BNPL • Obolus PROTOCOL • DECENTRALIZED CROSS-CHAIN BNPL •
+                                    INSTITUTIONAL PRIVACY PROTOCOL • OBOLUS • INSTITUTIONAL PRIVACY PROTOCOL •
                                 </textPath>
                             </text>
                         </svg>
@@ -49,23 +49,23 @@ export function LandingPage() {
                             Obolus PROTOCOL
                         </h1>
                         <p className="text-slate-200 font-mono text-lg tracking-widest uppercase max-w-3xl mx-auto mb-4">
-                            Instant cross-chain credit powered by your assets.
+                            Privacy-Preserving RWA Yield and Credit Layer.
                         </p>
                         <p className="text-slate-400 font-mono text-sm tracking-widest uppercase max-w-2xl mx-auto">
-                            Leverage your collateral across Polygon, Monad, and Base. Activate your global BNPL credit line now.
+                            Shield your portfolio metadata on BNB Chain. Deploy institutional-grade RWA strategies with complete privacy.
                         </p>
                     </div>
 
                     <div className="bg-[#05080f]/80 border border-primary/20 backdrop-blur-xl p-8 rounded-2xl text-center shadow-2xl mb-12 max-w-md w-full">
                         <div className="flex gap-8 justify-center">
                             <div className="text-left font-mono">
-                                <p className="text-[9px] text-slate-500 uppercase tracking-widest">Interest_Rate</p>
-                                <p className="text-xl font-bold text-primary">4.20% APR</p>
+                                <p className="text-[9px] text-slate-500 uppercase tracking-widest">Vault_Privacy</p>
+                                <p className="text-xl font-bold text-primary">ECIES / TEE</p>
                             </div>
                             <div className="border-l border-white/10"></div>
                             <div className="text-left font-mono">
-                                <p className="text-[9px] text-slate-500 uppercase tracking-widest">CCIP_Status</p>
-                                <p className="text-xl font-bold text-white uppercase">SYNCED</p>
+                                <p className="text-[9px] text-slate-500 uppercase tracking-widest">CRE_Status</p>
+                                <p className="text-xl font-bold text-white uppercase">ACTIVE</p>
                             </div>
                         </div>
                     </div>
@@ -95,27 +95,27 @@ export function LandingPage() {
                         <div className="flex flex-col items-center mb-16">
                             <div className="relative inline-block font-display font-black">
                                 <h2 className="text-8xl md:text-[12rem] font-bold text-white tracking-tighter neon-text leading-none uppercase italic">
-                                    $2,450,192
+                                    $15,240,192
                                 </h2>
                                 <div className="absolute -top-4 -right-20 bg-primary/10 border border-primary/30 px-4 py-1.5 rounded-lg text-primary text-lg font-bold font-mono">
                                     +12.5%
                                 </div>
                             </div>
-                            <p className="text-2xl md:text-3xl text-primary font-bold uppercase tracking-[0.3em] mt-8 font-mono italic">TOTAL CREDIT ISSUED</p>
+                            <p className="text-2xl md:text-3xl text-primary font-bold uppercase tracking-[0.3em] mt-8 font-mono italic">TOTAL PROTOCOL TVL</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-16 border-t border-white/10 pt-16 font-mono">
                             <div className="flex flex-col items-center gap-2">
-                                <p className="text-sm tracking-widest text-slate-500 font-bold uppercase">Active_Borrowers</p>
-                                <p className="text-4xl font-bold text-white tracking-tighter">12,402</p>
+                                <p className="text-sm tracking-widest text-slate-500 font-bold uppercase">Privacy_Vaults</p>
+                                <p className="text-4xl font-bold text-white tracking-tighter">1,202</p>
                             </div>
                             <div className="flex flex-col items-center gap-2">
-                                <p className="text-sm tracking-widest text-slate-500 font-bold uppercase">Collateral_TVL</p>
-                                <p className="text-4xl font-bold text-white tracking-tighter">$15,840,290</p>
+                                <p className="text-sm tracking-widest text-slate-500 font-bold uppercase">RWA_Capital</p>
+                                <p className="text-4xl font-bold text-white tracking-tighter">$8,240,290</p>
                             </div>
                             <div className="flex flex-col items-center gap-2">
-                                <p className="text-sm tracking-widest text-slate-500 font-bold uppercase">Network_Uptime</p>
-                                <p className="text-4xl font-bold text-primary tracking-tighter uppercase">99.99%</p>
+                                <p className="text-sm tracking-widest text-slate-500 font-bold uppercase">Privacy_Score</p>
+                                <p className="text-4xl font-bold text-primary tracking-tighter uppercase">99.9%</p>
                             </div>
                         </div>
                     </div>
@@ -127,13 +127,13 @@ export function LandingPage() {
                     <div className="marquee-content flex gap-20 items-center">
                         <div className="flex gap-8 items-center">
                             <span className="text-primary font-mono text-base font-bold tracking-[0.3em] uppercase">Obolus NETWORK STATUS:</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">USDC_VOLUME: $4.2M</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">LOCKED_MONAD: 85,120.33</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">TOTAL_CREDIT_ISSUED: $2,450,192.00</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">ACTIVE_BORROWERS: 12,402</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">CCIP_SYNC_HEALTH: 100%</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">RWA_VOLUME: $12.2M</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">LOCKED_EQUITY: TSLAx / AAPLx</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">TOTAL_PROTOCOL_TVL: $15,240,192.00</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">ACTIVE_VAULTS: 1,202</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">CRE_SYNC_HEALTH: 100%</span>
                             <span className="text-primary font-mono text-base font-bold tracking-[0.3em] uppercase ml-20">Obolus NETWORK STATUS:</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">LOCKED_ETH: 4,200.54</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">ENCRYPTED_STATE: SYNCED</span>
                         </div>
                     </div>
                 </div>
