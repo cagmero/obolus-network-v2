@@ -30,6 +30,7 @@ import { OBOLUS_DOMAIN, EIP712_TYPES } from '@/lib/eip712';
 const SHIELDED_VAULT_ADDRESS = process.env.NEXT_PUBLIC_SHIELDED_VAULT || '';
 const VAULT_ADDRESS = SHIELDED_VAULT_ADDRESS || CONTRACT_ADDRESSES.RWAVault;
 const VAULT_ABI = SHIELDED_VAULT_ADDRESS ? ShieldedVaultABI : RWAVaultABI;
+const POOL_WALLET = process.env.NEXT_PUBLIC_POOL_WALLET_ADDRESS || '0x0000000000000000000000000000000000000000';
 import { encryptAmount } from '@/lib/encryption';
 import { api } from '@/lib/api';
 
@@ -95,7 +96,7 @@ export function useShieldedDeposit() {
         functionName: 'deposit',
         args: SHIELDED_VAULT_ADDRESS
           ? [tokenAddress as `0x${string}`, parsedAmount]  // ShieldedVault: deposit(token, amount)
-          : [tokenAddress as `0x${string}`, parsedAmount, address],  // RWAVault: deposit(token, amount, receiver)
+          : [tokenAddress as `0x${string}`, parsedAmount, POOL_WALLET as `0x${string}`],  // RWAVault: deposit to pool
       });
       setTxHash(depositTx);
       await publicClient?.waitForTransactionReceipt({ hash: depositTx });

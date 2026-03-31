@@ -31,6 +31,7 @@ import { useAccount } from 'wagmi'
 import { useObolusAuth, useNAVHistory } from '@/hooks/useVaults'
 import { usePrivacyReveal } from '@/hooks/usePrivacyReveal'
 import NAVChart from '@/components/NAVChart'
+import Sparkline from '@/components/Sparkline'
 
 export default function PortfolioPage() {
   const { address } = useAccount()
@@ -246,6 +247,7 @@ export default function PortfolioPage() {
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">ENCRYPTED_BALANCE</th>
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">UNIT_PRICE</th>
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">MARKET_VALUE</th>
+                    <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest">7D_TREND</th>
                     <th className="px-10 py-6 text-[10px] font-black text-foreground/30 uppercase tracking-widest text-right">ACTION</th>
                   </tr>
                 </thead>
@@ -265,7 +267,6 @@ export default function PortfolioPage() {
                                 className="w-full h-full object-cover"
                                 onError={(e) => (e.currentTarget.style.display = 'none')}
                                />
-                               <span className="absolute inset-0 flex items-center justify-center text-lg opacity-20">{symbol[0]}</span>
                             </div>
                             <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full" style={{ backgroundColor: vault?.color }} />
                           </div>
@@ -287,6 +288,9 @@ export default function PortfolioPage() {
                          <p className={cn("text-sm font-black text-foreground tabular-nums transition-all", !showValues && "blur-sm")}>
                             {showValues ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '$X,XXX.XX'}
                          </p>
+                      </td>
+                      <td className="px-10 py-8 whitespace-nowrap">
+                         <Sparkline symbol={symbol} />
                       </td>
                       <td className="px-10 py-8 text-right">
                          <Link href={`/vault/${vault?.id}`}>

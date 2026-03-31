@@ -138,11 +138,16 @@ export default function VaultDetailPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-5">
               <div 
-                className="w-20 h-20 rounded-3xl flex items-center justify-center text-3xl font-black relative overflow-hidden group shadow-2xl"
-                style={{ backgroundColor: `${vault.color}10`, color: vault.color, border: `1px solid ${vault.color}30` }}
+                className="w-20 h-20 rounded-3xl flex items-center justify-center text-3xl font-black relative overflow-hidden group shadow-2xl bg-white/5"
+                style={{ color: vault.color, border: `1px solid ${vault.color}30` }}
               >
                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                {vault.symbol[0]}
+                <img 
+                  src={`/stocks/${vault.symbol.replace(/x$|on$|X$/i, '')}.png`} 
+                  alt={vault.symbol} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">

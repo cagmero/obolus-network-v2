@@ -262,7 +262,7 @@ export function useMintFaucet() {
   const mintAll = async () => {
     console.log('[OBOLUS:FAUCET] Minting all 9 tokens...')
     const entries = Object.entries(CONTRACT_ADDRESSES)
-      .filter(([key]) => !['RWAVault', 'ObolusOracle'].includes(key))
+      .filter(([key]) => !['RWAVault', 'ObolusOracle', 'ObolusAMM'].includes(key))
 
     for (const [symbol, addr] of entries) {
       try {

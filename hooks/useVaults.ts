@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi'
 import { api } from '@/lib/api'
 import { OBOLUS_CONTRACTS } from '@/lib/wagmi'
+import { RWAVaultABI } from '@/lib/abis'
 import { parseUnits, parseAbi } from 'viem'
 import { encryptAmount } from '@/lib/encryption'
 
@@ -227,7 +228,8 @@ export function useVaultDeposit() {
 
       // 2. Deposit (on-chain)
       const txHash = await writeContractAsync({
-        ...OBOLUS_CONTRACTS.RWAVault,
+        address: OBOLUS_CONTRACTS.RWAVault.address,
+        abi: RWAVaultABI,
         functionName: 'deposit',
         args: [tokenAddress, units],
       })
@@ -285,7 +287,8 @@ export function useVaultWithdraw() {
 
       // 1. Withdraw (on-chain)
       const txHash = await writeContractAsync({
-        ...OBOLUS_CONTRACTS.RWAVault,
+        address: OBOLUS_CONTRACTS.RWAVault.address,
+        abi: RWAVaultABI,
         functionName: 'withdraw',
         args: [tokenAddress, units],
       })

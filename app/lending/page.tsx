@@ -10,6 +10,9 @@ import { ObolusLendingPoolABI } from "@/lib/defi-abis"
 import { ERC20ABI } from "@/lib/abis"
 import { Button } from "@/components/ui/button"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { useEffect } from "react"
 
 const stockTokens = SWAP_TOKENS.filter(t => !t.isStable)
 
@@ -18,6 +21,7 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
   const [tab, setTab] = useState<'lend' | 'borrow'>('lend')
   const [amount, setAmount] = useState("")
   const poolAddress = DEFI_ADDRESSES.LendingPools[token.symbol] as `0x${string}` | undefined
+  const queryClient = useQueryClient()
 
   // Pool stats
   const { data: poolStats } = useReadContract({
@@ -54,8 +58,41 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
     query: { enabled: !!address },
   })
 
-  const { writeContract, data: txHash, isPending } = useWriteContract()
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash })
+  // Token Allowance (Stock for Lend)
+  const { data: stockAllowance } = useReadContract({
+    address: token.address,
+    abi: ERC20ABI,
+    functionName: 'allowance',
+    args: address && poolAddress ? [address, poolAddress] : undefined,
+    query: { enabled: !!address && !!poolAddress },
+  })
+
+  // oUSD Allowance (for Borrow collateral)
+  const { data: oUSDAllowance } = useReadContract({
+    address: DEFI_ADDRESSES.oUSD,
+    abi: ERC20ABI,
+    functionName: 'allowance',
+    args: address && poolAddress ? [address, poolAddress] : undefined,
+    query: { enabled: !!address && !!poolAddress },
+  })
+
+  const { writeContract, data: txHash, isPending, reset } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess, isError, error: txError } = useWaitForTransactionReceipt({ 
+    hash: txHash,
+  })
+
+  useEffect(() => {
+    if (isSuccess) {
+      queryClient.invalidateQueries()
+      toast.success("Transaction confirmed")
+      setAmount("")
+      reset()
+    }
+    if (isError) {
+      toast.error(txError?.message || "Transaction failed")
+      reset()
+    }
+  }, [isSuccess, isError, txError, queryClient, reset])
 
   const stats = poolStats as any
   const zero = BigInt(0)
@@ -66,11 +103,25 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
 
   const handleLend = () => {
     if (!poolAddress || !amount) return
+    
+    const parsedAmount = parseEther(amount)
+    const allowance = (stockAllowance as bigint) || BigInt(0)
+    
+    if (allowance < parsedAmount) {
+      writeContract({
+        address: token.address,
+        abi: ERC20ABI,
+        functionName: 'approve',
+        args: [poolAddress, BigInt("1000000000000000000000000000")], // ~Near infinite
+      })
+      return
+    }
+
     writeContract({
       address: poolAddress,
       abi: ObolusLendingPoolABI,
       functionName: 'lend',
-      args: [parseEther(amount)],
+      args: [parsedAmount],
     })
   }
 
@@ -86,12 +137,26 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
 
   const handleBorrow = () => {
     if (!poolAddress || !amount) return
-    const collateral = parseEther((parseFloat(amount) * 1.5).toString())
+    
+    const parsedAmount = parseEther(amount)
+    const collateral = (parsedAmount * BigInt(150)) / BigInt(100) // 1.5x collateral
+    const allowance = (oUSDAllowance as bigint) || BigInt(0)
+    
+    if (allowance < collateral) {
+      writeContract({
+        address: DEFI_ADDRESSES.oUSD,
+        abi: ERC20ABI,
+        functionName: 'approve',
+        args: [poolAddress, BigInt("1000000000000000000000000000")],
+      })
+      return
+    }
+
     writeContract({
       address: poolAddress,
       abi: ObolusLendingPoolABI,
       functionName: 'borrow',
-      args: [collateral, parseEther(amount)],
+      args: [collateral, parsedAmount],
     })
   }
 
@@ -116,12 +181,11 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
             <div className="relative">
               <div className="w-12 h-12 rounded-2xl bg-primary/5 border border-border/20 flex items-center justify-center text-primary font-black text-sm relative z-10 overflow-hidden bg-white/5">
                  <img 
-                  src={`/stocks/${token.symbol.replace(/x$|on$|X$/i, '')}.png`} 
+                  src={token.symbol === 'oUSD' ? '/logo-only.png' : `/stocks/${token.symbol.replace(/x$|on$|X$/i, '')}.png`} 
                   alt={token.symbol} 
                   className="w-full h-full object-cover"
                   onError={(e) => (e.currentTarget.style.display = 'none')}
                  />
-                 <span className="absolute inset-0 flex items-center justify-center text-lg opacity-20">{token.symbol[0]}</span>
               </div>
               <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-primary" />
             </div>
@@ -215,7 +279,9 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
                   disabled={isLoading || !amount}
                   className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[10px] rounded-xl"
                 >
-                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "LEND"}
+                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                    amount && ((stockAllowance as bigint) || BigInt(0)) < parseEther(amount) ? `APPROVE ${token.symbol}` : "LEND"
+                  )}
                 </Button>
                 <Button
                   onClick={handleWithdraw}
@@ -233,7 +299,9 @@ function LendingPoolCard({ token }: { token: typeof stockTokens[0] }) {
                   disabled={isLoading || !amount}
                   className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[10px] rounded-xl"
                 >
-                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "BORROW"}
+                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                    amount && ((oUSDAllowance as bigint) || BigInt(0)) < (parseEther(amount) * BigInt(150) / BigInt(100)) ? "APPROVE oUSD" : "BORROW"
+                  )}
                 </Button>
                 <Button
                   onClick={handleRepay}

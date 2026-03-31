@@ -175,8 +175,8 @@ export function SwapWidget() {
     : false
 
   // Write contracts
-  const { writeContract: approve, data: approveTxHash, isPending: isApproving } = useWriteContract()
-  const { writeContract: swap, data: swapTxHash, isPending: isSwapping } = useWriteContract()
+  const { writeContract: approve, data: approveTxHash, isPending: isApproving, reset: resetApprove } = useWriteContract()
+  const { writeContract: swap, data: swapTxHash, isPending: isSwapping, reset: resetSwap } = useWriteContract()
 
   const { isLoading: isApproveConfirming, isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveTxHash })
   const { isLoading: isSwapConfirming, isSuccess: swapSuccess } = useWaitForTransactionReceipt({ hash: swapTxHash })
@@ -212,8 +212,9 @@ export function SwapWidget() {
       toast.success("Allowance updated!")
       refetchAllowance()
       queryClient.invalidateQueries()
+      resetApprove()
     }
-  }, [approveSuccess, refetchAllowance, queryClient])
+  }, [approveSuccess, refetchAllowance, queryClient, resetApprove])
 
   // Handle swap
   const handleSwap = () => {
@@ -238,8 +239,9 @@ export function SwapWidget() {
       toast.success(`Successfully swapped for ${tokenOut.symbol}!`)
       setAmountIn("")
       queryClient.invalidateQueries()
+      resetSwap()
     }
-  }, [swapSuccess, tokenOut.symbol])
+  }, [swapSuccess, tokenOut.symbol, queryClient, resetSwap])
 
   // Price analysis
   const priceImpact = useMemo(() => {

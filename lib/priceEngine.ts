@@ -39,7 +39,8 @@ function isNYSESessionActive(): boolean {
   // Standard: 9:30 - 16:00
   // For demo: Let's expand to 4:00 - 20:00 (Pre + Post market) to be more "Open"
   const timeInMinutes = h * 60 + m
-  return timeInMinutes >= (4 * 60) && timeInMinutes <= (20 * 60)
+  // For demo: Always open
+  return true
 }
 
 export async function getAllTokenPrices(): Promise<Record<string, TokenPrice>> {

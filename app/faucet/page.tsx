@@ -107,7 +107,7 @@ export default function FaucetPage() {
         <div className="lg:col-span-8 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {Object.entries(CONTRACT_ADDRESSES)
-              .filter(([key]) => !['RWAVault', 'ObolusOracle'].includes(key))
+              .filter(([key]) => !['RWAVault', 'ObolusOracle', 'ObolusAMM'].includes(key))
               .map(([symbol, address]) => (
                 <TokenCard 
                   key={symbol}
@@ -168,7 +168,8 @@ export default function FaucetPage() {
               {[
                 { name: 'RWAVault', address: CONTRACT_ADDRESSES.RWAVault },
                 { name: 'ObolusOracle', address: CONTRACT_ADDRESSES.ObolusOracle },
-                ...Object.entries(CONTRACT_ADDRESSES).filter(([k]) => !['RWAVault', 'ObolusOracle'].includes(k)).map(([k, v]) => ({ name: k, address: v }))
+                { name: 'ObolusAMM', address: CONTRACT_ADDRESSES.ObolusAMM },
+                ...Object.entries(CONTRACT_ADDRESSES).filter(([k]) => !['RWAVault', 'ObolusOracle', 'ObolusAMM'].includes(k)).map(([k, v]) => ({ name: k, address: v }))
               ].map((contract) => (
                 <div key={contract.name} className="p-4 bg-black/20 rounded-2xl border border-border/10 group/item hover:border-amber-500/30 transition-all">
                   <div className="flex items-center justify-between mb-2">

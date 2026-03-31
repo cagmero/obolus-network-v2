@@ -104,10 +104,15 @@ export default function AssetPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div 
-                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black"
-                style={{ backgroundColor: `${vault.color}15`, color: vault.color, border: `1px solid ${vault.color}30` }}
+                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black relative overflow-hidden bg-white/5 shadow-inner"
+                style={{ color: vault.color, border: `1px solid ${vault.color}30` }}
               >
-                {vault.symbol[0]}
+                <img 
+                  src={`/stocks/${vault.symbol.replace(/x$|on$|X$/i, '')}.png`} 
+                  alt={vault.symbol} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
@@ -295,12 +300,16 @@ export default function AssetPage() {
                      placeholder="0.00" 
                      className="bg-transparent text-2xl font-black text-foreground focus:outline-none w-full tabular-nums"
                    />
-                   <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-border/20">
-                      <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                        {activeTab === 'DEPOSIT' ? 'U' : vault.symbol[0]}
-                      </div>
-                      <span className="text-xs font-bold">{activeTab === 'DEPOSIT' ? 'USDT' : vault.symbol}</span>
-                   </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-border/20">
+                       <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-primary overflow-hidden">
+                        {activeTab === 'DEPOSIT' ? (
+                          <span className="text-[10px] font-black">U</span>
+                        ) : (
+                          <img src={`/stocks/${vault.symbol.replace(/x$|on$|X$/i, '')}.png`} alt="" className="w-full h-full object-cover" />
+                        )}
+                       </div>
+                       <span className="text-xs font-bold">{activeTab === 'DEPOSIT' ? 'USDT' : vault.symbol}</span>
+                    </div>
                 </div>
               </div>
 
@@ -320,12 +329,16 @@ export default function AssetPage() {
                    <span className="text-2xl font-black text-foreground/40 tabular-nums">
                      {amount || '0.00'}
                    </span>
-                   <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-xl border border-primary/20">
-                      <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center text-[10px] text-primary-foreground font-black">
-                        {activeTab === 'DEPOSIT' ? vault.symbol[0] : 'U'}
-                      </div>
-                      <span className="text-xs font-bold">{activeTab === 'DEPOSIT' ? vault.symbol : 'USDT'}</span>
-                   </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-xl border border-primary/20">
+                       <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center text-[10px] text-primary-foreground font-black overflow-hidden">
+                        {activeTab === 'DEPOSIT' ? (
+                          <img src={`/stocks/${vault.symbol.replace(/x$|on$|X$/i, '')}.png`} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[10px] font-black">U</span>
+                        )}
+                       </div>
+                       <span className="text-xs font-bold">{activeTab === 'DEPOSIT' ? vault.symbol : 'USDT'}</span>
+                    </div>
                 </div>
               </div>
 
