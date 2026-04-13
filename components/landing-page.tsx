@@ -1,10 +1,8 @@
-"use client"
-
-import { useConnectModal } from "@rainbow-me/rainbowkit"
+import { usePrivy } from "@privy-io/react-auth"
 import Link from "next/link"
 
 export function LandingPage() {
-    const { openConnectModal } = useConnectModal()
+    const { login } = usePrivy()
 
     return (
         <div className="relative min-h-screen flex flex-col overflow-x-hidden -mt-24">
@@ -73,8 +71,8 @@ export function LandingPage() {
                     <div className="flex flex-col md:flex-row items-center gap-6">
                         <button
                             onClick={() => {
-                                console.log("LandingPage: LAUNCH TERMINAL clicked, calling openConnectModal()")
-                                openConnectModal?.()
+                                console.log("LandingPage: LAUNCH TERMINAL clicked, calling privy login()")
+                                login()
                             }}
                             className="bg-primary text-black px-12 py-5 rounded-xl font-bold text-xl hover:brightness-110 transition-all neon-glow min-w-[280px] font-mono uppercase tracking-tighter"
                         >

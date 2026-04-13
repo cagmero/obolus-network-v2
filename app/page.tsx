@@ -1,6 +1,6 @@
 "use client"
 
-import { useAccount } from "wagmi"
+import { usePrivy, useWallets } from "@privy-io/react-auth"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { LandingPage } from "@/components/landing-page"
@@ -11,14 +11,20 @@ import { useRecentTransactions, useUserProfile, usePlatformTVL, useVaultPosition
 import { SwapWidget } from "@/components/swap-widget"
 
 export default function Page() {
-  const { isConnected, address } = useAccount()
+  const { authenticated, user, ready } = usePrivy()
+  const { wallets } = useWallets()
+
+  // Get current wallet address
+  const wallet = wallets[0]
+  const address = wallet?.address || user?.wallet?.address
+
   const { data: userProfile } = useUserProfile()
   const { data: platformTvl } = usePlatformTVL()
   const { data: positionsData } = useVaultPositions()
   const { data: recentTxnsData } = useRecentTransactions()
   const recentTxns = recentTxnsData?.transactions ?? []
 
-  if (!isConnected) {
+  if (ready && !authenticated) {
     return <LandingPage />
   }
 

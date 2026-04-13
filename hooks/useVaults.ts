@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi'
 import { api } from '@/lib/api'
 import { OBOLUS_CONTRACTS } from '@/lib/wagmi'
@@ -16,7 +17,12 @@ const ERC20_ABI = parseAbi([
 // --- Helper for EIP-712 Auth ---
 
 export function useObolusAuth() {
-  const { address, chainId } = useAccount()
+  const { authenticated, user, ready } = usePrivy()
+  const { wallets } = useWallets()
+  const wallet = wallets[0]
+  const address = wallet?.address || user?.wallet?.address
+  const chainId = wallet?.chainId
+
   const { signTypedDataAsync } = useSignTypedData()
   const queryClient = useQueryClient()
 
@@ -65,7 +71,9 @@ export function useObolusAuth() {
  * Fetch user profile and stats
  */
 export function useUserProfile() {
-  const { address } = useAccount()
+  const { user } = usePrivy()
+  const { wallets } = useWallets()
+  const address = wallets[0]?.address || user?.wallet?.address
   return useQuery({
     queryKey: ['user-profile', address],
     queryFn: () => api.get<any>(`/api/v1/user/${address}`, { walletAddress: address }),
@@ -87,7 +95,9 @@ export function usePlatformTVL() {
  * Fetch all active positions for a user
  */
 export function useVaultPositions() {
-  const { address } = useAccount()
+  const { user } = usePrivy()
+  const { wallets } = useWallets()
+  const address = wallets[0]?.address || user?.wallet?.address
   return useQuery({
     queryKey: ['vault-positions', address],
     queryFn: async () => {
@@ -108,7 +118,9 @@ export function useVaultPositions() {
  * Improved to construct real history from market data if server data is unavailable.
  */
 export function useNAVHistory(days: number = 30, currentPositions?: any[]) {
-  const { address } = useAccount()
+  const { user } = usePrivy()
+  const { wallets } = useWallets()
+  const address = wallets[0]?.address || user?.wallet?.address
   const queryClient = useQueryClient()
 
   return useQuery({
@@ -196,7 +208,9 @@ export function useLatestPrices() {
  * Fetch transaction history
  */
 export function useRecentTransactions(limit: number = 10) {
-  const { address } = useAccount()
+  const { user } = usePrivy()
+  const { wallets } = useWallets()
+  const address = wallets[0]?.address || user?.wallet?.address
   return useQuery({
     queryKey: ['transactions', address, limit],
     queryFn: () => api.get<{ transactions: any[] }>(`/api/v1/transactions/${address}?limit=${limit}`, { walletAddress: address }),
@@ -208,7 +222,12 @@ export function useRecentTransactions(limit: number = 10) {
  * Execute a Deposit Flow: Approve -> Deposit -> Record Transaction -> Upsert Position
  */
 export function useVaultDeposit() {
-  const { address, chainId } = useAccount()
+  const { user } = usePrivy()
+  const { wallets } = useWallets()
+  const wallet = wallets[0]
+  const address = wallet?.address || user?.wallet?.address
+  const chainId = wallet?.chainId
+
   const { writeContractAsync } = useWriteContract()
   const { getSignature } = useObolusAuth()
   const queryClient = useQueryClient()
@@ -275,7 +294,12 @@ export function useVaultDeposit() {
  * Execute a Withdraw Flow
  */
 export function useVaultWithdraw() {
-  const { address, chainId } = useAccount()
+  const { user } = usePrivy()
+  const { wallets } = useWallets()
+  const wallet = wallets[0]
+  const address = wallet?.address || user?.wallet?.address
+  const chainId = wallet?.chainId
+
   const { writeContractAsync } = useWriteContract()
   const { getSignature } = useObolusAuth()
   const queryClient = useQueryClient()

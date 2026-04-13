@@ -8,8 +8,11 @@
  *   4. Client decrypts locally using signature-derived AES key
  */
 
+"use client"
+
 import { useState, useCallback } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useSignTypedData } from 'wagmi';
 import { OBOLUS_DOMAIN, EIP712_TYPES } from '@/lib/eip712';
 import { api } from '@/lib/api';
 
@@ -22,7 +25,9 @@ export interface RevealedPosition {
 }
 
 export function usePrivacyReveal() {
-  const { address } = useAccount();
+  const { user } = usePrivy();
+  const { wallets } = useWallets();
+  const address = wallets[0]?.address || user?.wallet?.address;
   const { signTypedDataAsync } = useSignTypedData();
 
   const [revealed, setRevealed] = useState(false);

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { usePrivy, useWallets } from "@privy-io/react-auth"
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi"
 import { useQueryClient } from "@tanstack/react-query"
 import { parseEther, formatEther, formatUnits } from "viem"
@@ -83,7 +84,10 @@ function TokenSelector({ token, onSelect, tokens, label }: TokenSelectorProps) {
 }
 
 export function SwapWidget() {
-  const { address, isConnected } = useAccount()
+  const { authenticated, user, ready } = usePrivy()
+  const { wallets } = useWallets()
+  const address = wallets[0]?.address || user?.wallet?.address
+  const isConnected = ready && authenticated
   const [tokenIn, setTokenIn] = useState<SwapToken>(SWAP_TOKENS.find(t => t.isStable) || SWAP_TOKENS[0])
   const [tokenOut, setTokenOut] = useState<SwapToken>(SWAP_TOKENS.find(t => !t.isStable) || SWAP_TOKENS[1])
   const [amountIn, setAmountIn] = useState("")

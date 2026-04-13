@@ -1,12 +1,15 @@
-import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { createConfig, http } from 'wagmi'
 import { bsc, bscTestnet, localhost } from 'wagmi/chains'
 import { cookieStorage, createStorage } from 'wagmi'
 
 // Wagmi config — BSC Testnet + Mainnet
-export const config = getDefaultConfig({
-  appName: 'Obolus Network',
-  projectId: '1745eedb32cb0f103490b50b14761c85',
+export const config = createConfig({
   chains: [bscTestnet, bsc, localhost],
+  transports: {
+    [bscTestnet.id]: http(),
+    [bsc.id]: http(),
+    [localhost.id]: http(),
+  },
   ssr: true,
   storage: createStorage({
     storage: cookieStorage

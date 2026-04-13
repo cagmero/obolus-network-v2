@@ -1,23 +1,30 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useAccount } from 'wagmi'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { api } from '@/lib/api'
 
 /**
  * Handles backend user registration/connection when a wallet is connected.
  */
 export function WalletConnectHandler() {
-  const { address, isConnected, chainId } = useAccount()
+  const { authenticated, user, ready } = usePrivy()
+  const { wallets } = useWallets()
   const [lastHandledAddress, setLastHandledAddress] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isConnected && address && address !== lastHandledAddress) {
+    if (!ready) return
+
+    const wallet = wallets[0]
+    const address = wallet?.address || user?.wallet?.address
+
+    if (authenticated && address && address !== lastHandledAddress) {
       const handleConnect = async () => {
         try {
           await api.post('/api/v1/user/connect', {
             walletAddress: address,
-            chainId,
+            chainId: wallet?.chainId || 0,
+            walletClientType: wallet?.walletClientType || 'privy',
           })
           setLastHandledAddress(address)
           console.log('User connected to Obolus Backend:', address)
@@ -27,10 +34,10 @@ export function WalletConnectHandler() {
       }
 
       handleConnect()
-    } else if (!isConnected) {
+    } else if (!authenticated) {
       setLastHandledAddress(null)
     }
-  }, [isConnected, address, chainId, lastHandledAddress])
+  }, [ready, authenticated, user, wallets, lastHandledAddress])
 
-  return null // This component doesn't render anything
+  return null
 }
